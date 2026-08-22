@@ -62,6 +62,8 @@ def _cmd_fit_structured(args) -> int:
     lattice, stats, _ = fst.fit_structured(
         flat_files, _archive_files(args.archive), cache,
         proxy_lattice=proxy, catalog_dir=Path(args.catalog) if args.catalog else None,
+        situations_json=Path(args.situations) if args.situations else None,
+        profiles_json=Path(args.profiles) if args.profiles else None,
         max_flats=args.max_flats,
     )
     out = Path(args.out)
@@ -200,6 +202,8 @@ def main(argv=None) -> int:
     p.add_argument("--out", required=True)
     p.add_argument("--catalog", default=None, help="dir with catalog_model.npz + cluster_profiles.npy")
     p.add_argument("--proxy", default=None, help="LUT used to render flats for situation classification")
+    p.add_argument("--situations", default=None, help="labels_all.json (by-eye situation labels)")
+    p.add_argument("--profiles", default=None, help="situation_profiles.json")
     p.add_argument("--max-flats", type=int, default=60)
     p.add_argument("--cache", default="cache")
     p.set_defaults(fn=_cmd_fit_structured)

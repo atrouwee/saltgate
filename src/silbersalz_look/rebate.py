@@ -15,30 +15,34 @@ import numpy as np
 from . import imgio
 
 
-def _band_bounds(profile: np.ndarray, thresh: float) -> tuple[int, int]:
-    """First/last index where the profile exceeds thresh (interior run)."""
-    above = np.where(profile > thresh)[0]
+def _band_bounds(profile: np.ndarray) -> tuple[int, int]:
+    """Interior run where the profile departs from the border level.
+
+    The rebate is near-black in graded scans but near-WHITE in flat scans, so
+    we look for deviation from the outermost rows/cols rather than for a
+    brightness threshold: score = |profile - border_median|."""
+    n = len(profile)
+    edge = max(2, int(0.03 * n))
+    border = float(np.median(np.concatenate([profile[:edge], profile[-edge:]])))
+    score = np.abs(profile - border)
+    thresh = 0.25 * float(np.percentile(score, 95))
+    if thresh < 0.02:  # no rebate visible at all
+        return 0, n
+    above = np.where(score > thresh)[0]
     if len(above) == 0:
-        return 0, len(profile)
+        return 0, n
     return int(above[0]), int(above[-1]) + 1
 
-def detect_image_area(rgb: np.ndarray, margin_frac: float = 0.01) -> tuple[int, int, int, int]:
-    """Return (x, y, w, h) of the image area as fractions applied to this image.
 
-    Works on a decoded preview (float [0,1]). Robust to both flat scans
-    (bright, milky interior) and graded scans (darker interior but still far
-    brighter than the near-black rebate).
-    """
+def detect_image_area(rgb: np.ndarray, margin_frac: float = 0.01) -> tuple[int, int, int, int]:
+    """Return (x, y, w, h) of the image area on this preview (float [0,1]).
+
+    Works for graded scans (dark rebate) and flat scans (bright rebate)."""
     luma = rgb.mean(axis=-1)
     col = np.median(luma, axis=0)  # profile across x
     row = np.median(luma, axis=1)  # profile across y
-
-    def thresh_for(profile: np.ndarray) -> float:
-        lo, hi = np.percentile(profile, [5, 95])
-        return lo + 0.25 * (hi - lo)
-
-    x0, x1 = _band_bounds(col, thresh_for(col))
-    y0, y1 = _band_bounds(row, thresh_for(row))
+    x0, x1 = _band_bounds(col)
+    y0, y1 = _band_bounds(row)
 
     # shave a safety margin off each side (frame edges bleed light)
     mx = int(round((x1 - x0) * margin_frac))
