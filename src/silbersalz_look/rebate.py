@@ -116,27 +116,39 @@ def crop_to_area(rgb: np.ndarray, frac: tuple[float, float, float, float]) -> np
 
 
 def looks_like_info_card(rgb: np.ndarray) -> bool:
-    """Detect the lab's orange info-card leader frame (frame 001 of a roll).
-
-    The card is a near-uniform strong-orange field: orange hue dominant, low
-    texture, saturated.
-    """
+    """Detect the lab's info-card leader frames (orange, green or red fields
+    with printed order text): a near-uniform, saturated, single-hue field."""
     luma = rgb.mean(axis=-1)
     bright = luma > 0.15
     if float(bright.mean()) < 0.15:
         return False
     px = rgb[bright]
+    mx, mn = px.max(axis=-1), px.min(axis=-1)
+    sat = mx - mn
+    if float(np.median(sat)) < 0.08 or float(luma[bright].std()) > 0.15:
+        return False
+    # hue concentration: >80% of saturated pixels within +/-30 deg of the median hue
     r, g, b = px[:, 0], px[:, 1], px[:, 2]
-    orange = (r > g) & (g > b)
-    sat = px.max(axis=-1) - px.min(axis=-1)
-    return (
-        float(orange.mean()) > 0.8
-        and float(np.median(sat)) > 0.12
-        and float(luma[bright].std()) < 0.15
-    )
+    h = np.degrees(np.arctan2(np.sqrt(3) * (g - b), 2 * r - g - b)) % 360.0
+    hs = h[sat > 0.08]
+    if len(hs) < 100:
+        return False
+    med = np.degrees(np.arctan2(np.sin(np.radians(hs)).mean(), np.cos(np.radians(hs)).mean())) % 360.0
+    d = np.abs((hs - med + 180.0) % 360.0 - 180.0)
+    return float((d < 30.0).mean()) > 0.8
+
+
+def looks_white(rgb: np.ndarray) -> bool:
+    """Blown/empty frame: almost entirely near-white."""
+    luma = rgb.mean(axis=-1)
+    return float((luma > 0.9).mean()) > 0.4
 
 
 def looks_blank(rgb: np.ndarray) -> bool:
-    """Unexposed/blank frame: near-black with no content."""
+    """Unexposed/blank frame: near-black with no content, or near-white."""
     luma = rgb.mean(axis=-1)
-    return float(np.percentile(luma, 95)) < 0.15
+    return float(np.percentile(luma, 95)) < 0.18 or looks_white(rgb)
+
+
+def is_content_frame(rgb: np.ndarray) -> bool:
+    return not (looks_blank(rgb) or looks_like_info_card(rgb))
