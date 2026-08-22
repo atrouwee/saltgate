@@ -30,6 +30,7 @@ Two tracks, honestly labeled:
 | 200T | *needs pairs* | *needs pairs* |
 | 500T | *needs pairs* | *needs pairs* |
 | 125 Special | *needs pairs* | *needs pairs* |
+| C-41 stocks the lab scanned (Gold 200, Portra…) | *needs pairs* | *first pairs incoming* |
 
 The lab switched scanners around 2021 (older deliveries are lower-resolution); the grade may differ between eras, so LUTs are fitted per *(stock, era)* cohort and merged only when a cross-era holdout test shows the grades actually agree.
 
