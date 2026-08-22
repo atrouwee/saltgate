@@ -47,6 +47,7 @@ def grade_one(
     area_frac: tuple | None = None,
     quality: int = 95,
     density: float = 0.0,
+    rotate_k: int = 0,
 ) -> dict:
     t0 = time.time()
     gains = np.ones(3)
@@ -71,6 +72,9 @@ def grade_one(
         arr[y0 : y0 + STRIP_ROWS] = np.clip(np.rint(graded * 255.0), 0, 255).astype(np.uint8)
         del strip, graded
 
+    if rotate_k % 4:
+        from . import orient
+        arr = orient.apply_rotation(arr, rotate_k)
     res = Image.fromarray(arr, mode="RGB")
     kwargs: dict = {"quality": quality, "subsampling": 0}
     if icc:
@@ -99,6 +103,7 @@ def grade_folder(
     cache_dir: Path | None = None,
     limit: int | None = None,
     density: float = 0.0,
+    rotations: dict | None = None,
     log=print,
 ) -> list[dict]:
     lattice, title = lutmod.read_cube(cube_path)
@@ -135,7 +140,8 @@ def grade_folder(
     with cf.ProcessPoolExecutor(max_workers=workers) as ex:
         futs = {
             ex.submit(grade_one, src, dst, lattice, anchors, balance_mode,
-                      balance_strength, area_frac, quality, density): src
+                      balance_strength, area_frac, quality, density,
+                      (rotations or {}).get(src.name, {}).get("k", 0)): src
             for src, dst in todo
         }
         done = 0

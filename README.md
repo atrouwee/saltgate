@@ -83,3 +83,15 @@ sslook report --in FLATDIR --compare GRADEDDIR --out report/
 ## License
 
 MIT for all code and LUTs. Donated images are used only for fitting and are never redistributed — see the privacy note in the donation guide.
+
+## Auto-rotation (run first)
+
+Scans are delivered in film-strip orientation; portrait and upside-down frames are not rotated. Decide rotations once per roll, review, then grade:
+
+```bash
+.venv/bin/python scripts/auto_rotate.py --in FLATDIR --out rotations.json --sheet review.jpg
+.venv/bin/python scripts/auto_rotate.py --set rotations.json 0026=2 0044=1    # fix flagged frames (k = 90° CCW steps)
+.venv/bin/sslook apply --lut luts/...cube --in FLATDIR --rotations rotations.json
+```
+
+Cues: a rotation probe on spatially pooled ResNet-50 features (self-supervised on the graded archive) fused with a YuNet face detector (`models/`). Confident decisions are ~90% right; low-confidence frames are marked red on the review sheet for a manual `--set`.

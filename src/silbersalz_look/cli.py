@@ -132,6 +132,7 @@ def _cmd_apply(args) -> int:
         cache_dir=cache,
         limit=args.limit,
         density=args.density,
+        rotations=(__import__("json").loads(Path(args.rotations).read_text()) if args.rotations else None),
     )
     print(f"[done] graded frames in {out_dir}")
     return 0
@@ -229,6 +230,7 @@ def main(argv=None) -> int:
     p.add_argument("--balance-strength", type=float, default=1.0)
     p.add_argument("--workers", type=int, default=None, help="default: RAM-aware")
     p.add_argument("--limit", type=int, default=None, help="grade at most N frames")
+    p.add_argument("--rotations", default=None, help="rotations.json from scripts/auto_rotate.py")
     p.add_argument("--density", type=float, default=0.0,
                    help="print density in stops (negative = denser/darker), e.g. -0.3")
     p.add_argument("--quality", type=int, default=95)
