@@ -30,7 +30,7 @@ Two tracks, honestly labeled:
 | 200T | *needs pairs* | *needs pairs* |
 | 500T | *needs pairs* | *needs pairs* |
 | 125 Special | *needs pairs* | *needs pairs* |
-| **Gold 200** (C-41) | *needs pairs* | **`v1-paired`** — 27 real pairs, held-out ΔE2000 1.8 |
+| **Gold 200** (C-41) | *needs pairs* | **`v1-paired`** — 27 real pairs, held-out ΔE2000 1.6 |
 | other C-41 stocks | *needs pairs* | *needs pairs* |
 
 The lab switched scanners around 2021 (older deliveries are lower-resolution); the grade may differ between eras, so LUTs are fitted per *(stock, era)* cohort and merged only when a cross-era holdout test shows the grades actually agree.
