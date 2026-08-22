@@ -142,11 +142,11 @@ def delta_e_2000(lab1: np.ndarray, lab2: np.ndarray) -> np.ndarray:
 # --- soft clip --------------------------------------------------------------
 
 
-def soft_clip(x: np.ndarray, knee: float = 0.02) -> np.ndarray:
+def soft_clip(x: np.ndarray, knee: float = 0.02, low_end: bool = True) -> np.ndarray:
     """Smoothly compress values outside [0,1] into the last `knee` of range.
 
-    Identity on [knee, 1-knee]; rational soft knee at both ends so LUT
-    lattices contain no hard clipping cliffs.
+    Identity on [knee, 1-knee]; rational soft knee at the top (and at the
+    bottom when low_end=True) so LUT lattices contain no hard clipping cliffs.
     """
     lo = knee
     hi = 1.0 - knee
@@ -161,7 +161,8 @@ def soft_clip(x: np.ndarray, knee: float = 0.02) -> np.ndarray:
 
     out = np.asarray(x, dtype=np.float64).copy()
     high = out > hi
-    low = out < lo
     out[high] = _knee_high(out[high])
-    out[low] = _knee_low(out[low])
+    if low_end:
+        low = out < lo
+        out[low] = _knee_low(out[low])
     return np.clip(out, 0.0, 1.0)

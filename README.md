@@ -25,7 +25,7 @@ Two tracks, honestly labeled:
 
 | Stock | classic era (pre-APOLLON) | APOLLON 14K era |
 |---|---|---|
-| 250D | — | `v0-statistical` (provisional) |
+| 250D | — | `v0-statistical`, `v0.2-structured` (both provisional) |
 | 50D | *needs pairs* | *needs pairs* |
 | 200T | *needs pairs* | *needs pairs* |
 | 500T | *needs pairs* | *needs pairs* |
@@ -65,7 +65,11 @@ sslook fit-statistical --flats FLATDIR --archive GRADEDDIR --out luts/...cube
 sslook report --in FLATDIR --compare GRADEDDIR --out report/
 ```
 
-## Caveats of the current `v0-statistical` LUT
+## Situation catalog (analysis tool)
+
+`scripts/build_catalog.py` clusters a graded archive into *situations* (k-means on perceptual + layout features) and writes per-cluster contact sheets and grade fingerprints (`report/catalog/`). It showed that the lab **preserved scene color temperature** (golden scenes stay warm, overcast stays cool) and corrected mostly exposure per shot — which is why `sslook apply` defaults to `--balance exposure` (scalar gain, clamped to ±0.4 stop, soft highlight knee) rather than gray-world white balance. `sslook fit-structured` fits a parametric grade against those situation profiles (`v0.2-structured`).
+
+## Caveats of the current no-pair LUTs (`v0-statistical`, `v0.2-structured`)
 
 - It was fitted by matching the color distribution of one flat roll against ~700 graded frames from 13 past deliveries (all 250D, APOLLON era). Distribution matching cannot capture hue-dependent nonlinearities of the true grade, and scene-content differences between rolls bias it despite robust trimming.
 - Treat it as "the Silbersalz *character*", not "the Silbersalz *grade*". The paired fit will replace it.

@@ -40,6 +40,38 @@ def _cmd_fit_statistical(args) -> int:
     return 0
 
 
+def _archive_files(dirs) -> list[Path]:
+    out = []
+    for d in dirs:
+        d = Path(d)
+        sub = d / "_JPG"
+        files = imgio.list_images(sub if sub.is_dir() else d)
+        jpegs = [f for f in files if f.suffix.lower() in (".jpg", ".jpeg")]
+        out += jpegs or files
+    return out
+
+
+def _cmd_fit_structured(args) -> int:
+    from . import fit_structured as fst
+    from . import lut
+
+    flat_files = [f for f in imgio.list_images(args.flats) if f.suffix.lower() in (".jpg", ".jpeg")]
+    cache = Path(args.cache)
+    cache.mkdir(parents=True, exist_ok=True)
+    proxy = lut.read_cube(args.proxy)[0] if args.proxy else None
+    lattice, stats, _ = fst.fit_structured(
+        flat_files, _archive_files(args.archive), cache,
+        proxy_lattice=proxy, catalog_dir=Path(args.catalog) if args.catalog else None,
+        max_flats=args.max_flats,
+    )
+    out = Path(args.out)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    lut.write_cube(out, lattice, out.stem, comments={"track": "v0.2-structured"})
+    lut.write_stats_sidecar(out, stats)
+    print(f"[done] wrote {out} and {out.with_suffix('.stats.json')}")
+    return 0
+
+
 def _cmd_fit_pairs(args) -> int:
     from . import fit_pairs as fp
 
@@ -96,6 +128,8 @@ def _cmd_apply(args) -> int:
         resume=args.resume,
         image_area=image_area,
         cache_dir=cache,
+        limit=args.limit,
+        density=args.density,
     )
     print(f"[done] graded frames in {out_dir}")
     return 0
@@ -160,6 +194,16 @@ def main(argv=None) -> int:
     p.add_argument("--cache", default="cache")
     p.set_defaults(fn=_cmd_fit_statistical)
 
+    p = sub.add_parser("fit-structured", help="fit parametric grade to situation-matched statistics")
+    p.add_argument("--flats", required=True)
+    p.add_argument("--archive", action="append", required=True)
+    p.add_argument("--out", required=True)
+    p.add_argument("--catalog", default=None, help="dir with catalog_model.npz + cluster_profiles.npy")
+    p.add_argument("--proxy", default=None, help="LUT used to render flats for situation classification")
+    p.add_argument("--max-flats", type=int, default=60)
+    p.add_argument("--cache", default="cache")
+    p.set_defaults(fn=_cmd_fit_structured)
+
     p = sub.add_parser("fit-pairs", help="fit LUT from donated flat/graded pairs")
     p.add_argument("--pairs", required=True)
     p.add_argument("--out", required=True)
@@ -175,9 +219,14 @@ def main(argv=None) -> int:
     p.add_argument("--lut", required=True)
     p.add_argument("--in", dest="in_dir", required=True)
     p.add_argument("--out", default=None)
-    p.add_argument("--balance", default="auto", choices=["auto", "off", "wb-only"])
+    p.add_argument("--balance", default="exposure",
+                   choices=["exposure", "auto", "off", "wb-only"],
+                   help="exposure (default): scalar gain per frame, keeps scene color temperature")
     p.add_argument("--balance-strength", type=float, default=1.0)
-    p.add_argument("--workers", type=int, default=4)
+    p.add_argument("--workers", type=int, default=None, help="default: RAM-aware")
+    p.add_argument("--limit", type=int, default=None, help="grade at most N frames")
+    p.add_argument("--density", type=float, default=0.0,
+                   help="print density in stops (negative = denser/darker), e.g. -0.3")
     p.add_argument("--quality", type=int, default=95)
     p.add_argument("--image-area", default=None, help="fx,fy,fw,fh fractions")
     p.add_argument("--resume", action="store_true")

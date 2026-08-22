@@ -1,11 +1,14 @@
 """Batch application of a LUT to folders of full-resolution flat scans.
 
-147 MP frames are processed in row strips to bound memory; ICC + EXIF are
-copied from the source so outputs stay tagged like the lab's deliveries.
+Memory discipline (147 MP frames): the decoded uint8 array is processed in
+row strips *in place* (no second full-frame buffer), the PIL image is closed
+right after decode, and the worker count defaults to what the machine's RAM
+can hold (~1 GB peak per worker).
 """
 from __future__ import annotations
 
 import concurrent.futures as cf
+import os
 import time
 from pathlib import Path
 
@@ -14,7 +17,24 @@ from PIL import Image
 
 from . import balance, imgio, lut as lutmod, rebate
 
-STRIP_ROWS = 512
+STRIP_ROWS = 384
+PEAK_GB_PER_WORKER = 1.1
+
+
+def ram_gb() -> float:
+    try:
+        import subprocess
+
+        out = subprocess.run(["sysctl", "-n", "hw.memsize"], capture_output=True, text=True)
+        return int(out.stdout.strip()) / 1073741824
+    except Exception:
+        return 8.0
+
+
+def default_workers() -> int:
+    cpu = os.cpu_count() or 4
+    by_ram = int((ram_gb() - 6.0) // 2.5)
+    return max(1, min(cpu // 3, by_ram, 4))
 
 
 def grade_one(
@@ -22,46 +42,43 @@ def grade_one(
     dst: Path,
     lattice: np.ndarray,
     anchors: dict | None,
-    balance_mode: str = "auto",
+    balance_mode: str = balance.DEFAULT_MODE,
     balance_strength: float = 1.0,
     area_frac: tuple | None = None,
     quality: int = 95,
+    density: float = 0.0,
 ) -> dict:
     t0 = time.time()
-    img = Image.open(src)
-    icc = img.info.get("icc_profile")
-    exif = img.info.get("exif")
-    w, h = img.size
-
     gains = np.ones(3)
     if balance_mode != "off" and anchors:
         preview = imgio.read_image(src, max_px=1200)
-        area = (
-            rebate.crop_to_area(preview.rgb, area_frac) if area_frac else preview.rgb
-        )
-        gains = balance.estimate_gains(
-            area, anchors, mode=balance_mode, strength=balance_strength
-        )
+        area = rebate.crop_to_area(preview.rgb, area_frac) if area_frac else preview.rgb
+        gains = balance.estimate_gains(area, anchors, mode=balance_mode, strength=balance_strength)
+        del preview, area
+    gains = gains * (2.0 ** density)  # print density: negative = denser/darker
 
-    arr = np.asarray(img.convert("RGB"), dtype=np.uint8)
-    out = np.empty_like(arr)
+    with Image.open(src) as img:
+        icc = img.info.get("icc_profile")
+        exif = img.info.get("exif")
+        arr = np.asarray(img.convert("RGB"), dtype=np.uint8).copy()
+    h = arr.shape[0]
     rng = np.random.default_rng(hash(src.name) & 0xFFFFFFFF)
     for y0 in range(0, h, STRIP_ROWS):
         strip = arr[y0 : y0 + STRIP_ROWS].astype(np.float32) / 255.0
         strip = balance.apply_gains(strip, gains)
         graded = lutmod.apply_trilinear(lattice, strip)
         graded += imgio.triangular_dither(graded.shape, rng)
-        out[y0 : y0 + STRIP_ROWS] = np.clip(np.rint(graded * 255.0), 0, 255).astype(
-            np.uint8
-        )
+        arr[y0 : y0 + STRIP_ROWS] = np.clip(np.rint(graded * 255.0), 0, 255).astype(np.uint8)
+        del strip, graded
 
-    res = Image.fromarray(out, mode="RGB")
+    res = Image.fromarray(arr, mode="RGB")
     kwargs: dict = {"quality": quality, "subsampling": 0}
     if icc:
         kwargs["icc_profile"] = icc
     if exif:
         kwargs["exif"] = exif
     res.save(str(dst), "JPEG", **kwargs)
+    del res, arr
     return {
         "file": src.name,
         "gains": [round(float(g), 4) for g in gains],
@@ -73,13 +90,15 @@ def grade_folder(
     in_dir: Path,
     out_dir: Path,
     cube_path: Path,
-    balance_mode: str = "auto",
+    balance_mode: str = balance.DEFAULT_MODE,
     balance_strength: float = 1.0,
-    workers: int = 4,
+    workers: int | None = None,
     quality: int = 95,
     resume: bool = False,
     image_area: tuple | None = None,
     cache_dir: Path | None = None,
+    limit: int | None = None,
+    density: float = 0.0,
     log=print,
 ) -> list[dict]:
     lattice, title = lutmod.read_cube(cube_path)
@@ -101,23 +120,22 @@ def grade_folder(
         if resume and dst.exists():
             continue
         todo.append((f, dst))
-    log(f"[apply] {len(todo)} of {len(files)} frames to grade with '{title}' "
-        f"(balance={balance_mode}, workers={workers})")
+    if limit is not None:
+        todo = todo[:limit]
+
+    if workers is None:
+        workers = default_workers()
+    log(
+        f"[apply] {len(todo)} of {len(files)} frames with '{title}' "
+        f"(balance={balance_mode}, workers={workers}, est. peak ~{workers * PEAK_GB_PER_WORKER:.1f} GB "
+        f"of {ram_gb():.0f} GB RAM)"
+    )
 
     results = []
     with cf.ProcessPoolExecutor(max_workers=workers) as ex:
         futs = {
-            ex.submit(
-                grade_one,
-                src,
-                dst,
-                lattice,
-                anchors,
-                balance_mode,
-                balance_strength,
-                area_frac,
-                quality,
-            ): src
+            ex.submit(grade_one, src, dst, lattice, anchors, balance_mode,
+                      balance_strength, area_frac, quality, density): src
             for src, dst in todo
         }
         done = 0
