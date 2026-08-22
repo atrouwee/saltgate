@@ -74,6 +74,20 @@ def _cmd_fit_structured(args) -> int:
     return 0
 
 
+def _cmd_fit_adapter(args) -> int:
+    from . import fit_adapter as fa
+    from . import lut
+
+    flat_files = [f for f in imgio.list_images(args.flats) if f.suffix.lower() in (".jpg", ".jpeg")]
+    cache = Path(args.cache); cache.mkdir(parents=True, exist_ok=True)
+    lattice, stats = fa.fit_adapter(flat_files, Path(args.lut), cache, Path(args.labels), Path(args.profiles), max_flats=args.max_flats)
+    out = Path(args.out); out.parent.mkdir(parents=True, exist_ok=True)
+    lut.write_cube(out, lattice, out.stem, comments={"track": "v1-bridged", "base": Path(args.lut).name})
+    lut.write_stats_sidecar(out, stats)
+    print(f"[done] wrote {out}")
+    return 0
+
+
 def _cmd_fit_pairs(args) -> int:
     from . import fit_pairs as fp
 
@@ -208,6 +222,13 @@ def main(argv=None) -> int:
     p.add_argument("--max-flats", type=int, default=60)
     p.add_argument("--cache", default="cache")
     p.set_defaults(fn=_cmd_fit_structured)
+
+    p = sub.add_parser("fit-adapter", help="bridge a pairless stock to a pair-fitted LUT of another stock")
+    p.add_argument("--flats", required=True); p.add_argument("--lut", required=True)
+    p.add_argument("--labels", required=True); p.add_argument("--profiles", required=True)
+    p.add_argument("--out", required=True); p.add_argument("--max-flats", type=int, default=70)
+    p.add_argument("--cache", default="cache")
+    p.set_defaults(fn=_cmd_fit_adapter)
 
     p = sub.add_parser("fit-pairs", help="fit LUT from donated flat/graded pairs")
     p.add_argument("--pairs", required=True)

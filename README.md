@@ -25,12 +25,13 @@ Two tracks, honestly labeled:
 
 | Stock | classic era (pre-APOLLON) | APOLLON 14K era |
 |---|---|---|
-| 250D | — | `v0-statistical`, `v0.2-structured` (both provisional) |
+| 250D | — | `v0-statistical` (provisional), `v1-bridged` (Gold 200 look + statistical tone bridge, experimental) |
 | 50D | *needs pairs* | *needs pairs* |
 | 200T | *needs pairs* | *needs pairs* |
 | 500T | *needs pairs* | *needs pairs* |
 | 125 Special | *needs pairs* | *needs pairs* |
-| C-41 stocks the lab scanned (Gold 200, Portra…) | *needs pairs* | *first pairs incoming* |
+| **Gold 200** (C-41) | *needs pairs* | **`v1-paired`** — 27 real pairs, held-out ΔE2000 1.8 |
+| other C-41 stocks | *needs pairs* | *needs pairs* |
 
 The lab switched scanners around 2021 (older deliveries are lower-resolution); the grade may differ between eras, so LUTs are fitted per *(stock, era)* cohort and merged only when a cross-era holdout test shows the grades actually agree.
 

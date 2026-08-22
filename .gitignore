@@ -13,3 +13,4 @@ docs/examples/*.jpeg
 docs/examples/*.png
 *.egg-info/
 models/rotation_probe.pkl
+pairs_jxl/
