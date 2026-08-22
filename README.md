@@ -51,7 +51,7 @@ python3 -m venv .venv && .venv/bin/pip install -e .
 .venv/bin/sslook apply \
   --lut luts/silbersalz-250d_v0-statistical_33.cube \
   --in  /path/to/your/flat/scans \
-  --balance auto
+  --balance exposure        # default; --density -0.3 for a denser print
 
 # outputs land in a sibling folder Graded_<version>/, ICC+EXIF preserved
 ```
