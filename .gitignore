@@ -1,0 +1,14 @@
+.venv/
+cache/
+pairs/
+report/
+out/
+__pycache__/
+*.pyc
+.pytest_cache/
+.DS_Store
+._*
+docs/examples/*.jpg
+docs/examples/*.jpeg
+docs/examples/*.png
+*.egg-info/
