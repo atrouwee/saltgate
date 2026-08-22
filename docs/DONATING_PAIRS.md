@@ -10,6 +10,20 @@ The paired fit (the real reverse-engineering) needs examples of the **same frame
 - Resized or cropped versions are usable (our aligner handles scale/crop/rotation), but originals are best.
 - Please note the **film stock** (50D / 200T / 250D / 500T / 125 Special) and roughly **when the roll was delivered** (the scanner era matters — pre-2021 scans differ from the APOLLON 14K scans).
 
+## Which frames help most
+
+The lab treated frames differently depending on the light, so variety beats volume. If you can choose, send pairs that cover different situations — ideally one or two of each:
+
+- direct daylight / sunshine
+- overcast or open shade
+- golden hour / low warm sun
+- indoor tungsten (warm lamps) at night
+- direct **flash**
+- mixed light (window + lamps)
+- and at least one clearly **underexposed** and one **overexposed** frame
+
+Frames with people (skin) are especially valuable. Note the situation in `meta.yaml` if you can (see below).
+
 ## How to structure a donation
 
 One folder per pair:
@@ -30,6 +44,9 @@ donor: your-name
 stock: 250D            # 50D | 200T | 250D | 500T | 125special
 era: apollon14k        # apollon14k | classic   (omit if unsure — we auto-detect)
 delivery_date: 2024-08
+illuminant: flash        # daylight | overcast-shade | golden-lowsun | tungsten | flash | fluorescent | mixed
+exposure: normal         # under | normal | over
+skin: faces-skin         # faces-skin | no-skin
 notes: anything relevant (push/pull, special instructions, ...)
 ```
 
