@@ -43,16 +43,17 @@ class Progress:
         self.label, self.total, self.t0, self.n = label, total, time.time(), 0
         self._draw()
 
-    def step(self, n: int = 1) -> None:
+    def step(self, n: int = 1, detail: str = "") -> None:
         self.n += n
-        self._draw()
+        self._draw(detail)
 
-    def _draw(self) -> None:
+    def _draw(self, detail: str = "") -> None:
         rate = (time.time() - self.t0) / max(self.n, 1)
         left = rate * (self.total - self.n) if self.n else 0
         eta = "" if self.n == 0 else (f" · about {max(1, round(left / 60))} min left" if left > 50 else f" · {int(left)} s left")
         bar = "#" * int(24 * self.n / max(self.total, 1)) + "-" * (24 - int(24 * self.n / max(self.total, 1)))
-        print(f"\r{DIM}{self.label}  [{bar}] {self.n}/{self.total}{eta}   {RESET}", end="", flush=True)
+        line = f"{self.label}  [{bar}] {self.n}/{self.total}{eta}" + (f" · {detail}" if detail else "")
+        print(f"\r{DIM}{line.ljust(96)}{RESET}", end="", flush=True)
         if self.n >= self.total:
             print(flush=True)
 
@@ -427,26 +428,55 @@ def _run() -> int:
     if need_gb > free_gb:
         say(f"{RED}Not enough free disk space. Free up about {need_gb - free_gb + 1:.0f} GB and run again.{RESET}")
         return 1
-    if not yes(f"Happy with the preview? Grade {todo} frames into {out_dir.name}/?", default=True):
+    batch = 20
+    if todo > batch:
+        how = choose("Happy with the preview? How would you like to grade?", [
+            ("all", f"All {todo} frames now (about {mins} min — I'll keep the Mac awake)"),
+            ("batch", f"A first batch of {batch} frames (about {max(1, round(batch * 25 / 60))} min); run `saltgate` again later to continue"),
+            ("stop", "Not now — keep the preview only"),
+        ])
+    else:
+        how = "all" if yes(f"Happy with the preview? Grade {todo} frames into {out_dir.name}/?", default=True) else "stop"
+    if how == "stop":
         say(f"{DIM}Okay — nothing else was written. The preview stays in {out_dir}.{RESET}")
         return 0
+    limit = batch if how == "batch" else None
 
     # 5. batch
     from . import apply as ap
-    prog = Progress("Grading", todo)
+    n_run = min(todo, limit) if limit else todo
+    prog = Progress("Grading", n_run)
     def log(msg: str) -> None:
         if msg.startswith("  ["):
-            prog.step()
+            # apply logs "  [k/N] <filename> gains=... (Ns)" per finished frame
+            name = msg.split("]", 1)[1].strip().split(" ")[0]
+            tag = name.split("_")[-1].split("-")[0] if "_" in name else name
+            prog.step(detail=f"frame {tag}")
+    keep_awake = None
+    if sys.platform == "darwin":
+        try:  # prevent idle sleep while we work (display may still dim)
+            keep_awake = subprocess.Popen(["caffeinate", "-i", "-w", str(os.getpid())])
+        except Exception:
+            keep_awake = None
     try:
-        ap.grade_folder(folder, out_dir, cube, balance_mode="off", resume=True, rotations=rotations, log=log)
+        ap.grade_folder(folder, out_dir, cube, balance_mode="off", resume=True, rotations=rotations, limit=limit, log=log)
     except Exception as e:  # never show a traceback to this audience
-        say(f"{RED}Something went wrong while grading: {e}{RESET}")
-        say("Frames finished so far are in the output folder; run `saltgate` again to continue (it resumes).")
+        say(f"\n{RED}Something went wrong while grading.{RESET} {explain(e)}")
+        say("Frames finished so far are in the output folder; run `saltgate` again to continue.")
+        write_log("grading", repr(e))
         return 1
+    finally:
+        if keep_awake is not None:
+            keep_awake.terminate()
     if rotations:
         (out_dir / "rotations.json").write_text(json.dumps(rotations, indent=1))
     (out_dir / "saltgate.json").write_text(json.dumps({"source": str(folder), "lut": str(cube), "stock": stock, "rotated": bool(rotations)}, indent=1))
-    say(f"\n{GREEN}{BOLD}Done.{RESET} {len(files)} graded frames are in {out_dir}")
+    remaining = len([f for f in files if not (out_dir / f.name).exists()])
+    if remaining:
+        say(f"\n{GREEN}{BOLD}Batch done.{RESET} {len(files) - remaining} of {len(files)} frames are graded in {out_dir}")
+        say(f"{BOLD}Run `saltgate` again whenever you like to continue with the remaining {remaining}.{RESET}")
+    else:
+        say(f"\n{GREEN}{BOLD}Done.{RESET} {len(files)} graded frames are in {out_dir}")
     if rotations:
         say(f"{DIM}A frame the wrong way up? Type:  saltgate fix-rotation \"{out_dir}\" 0026=1   (frame number = quarter turns anticlockwise: 1, 2 or 3){RESET}")
     say("They are JPEGs tagged Display P3, with the original EXIF, ready for Capture One / Lightroom / anything.")
