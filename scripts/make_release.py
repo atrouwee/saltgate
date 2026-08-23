@@ -11,6 +11,9 @@ for cube in sorted((root / "luts").glob("*.cube")):
     if "bridged" in cube.name or "structured" in cube.name:   # experimental, not shipped
         continue
     shutil.copy(cube, stage / cube.name)
+    side = cube.with_suffix(".stats.json")
+    if side.exists():
+        shutil.copy(side, stage / side.name)
     lut.write_hald_png(stage / cube.name.replace(".cube", ".hald.png"), lut.read_cube(cube)[0])
 shutil.copy(root / "docs/USING_THE_LUTS.md", stage / "USING_THE_LUTS.md")
 shutil.copy(root / "luts/CHANGELOG.md", stage / "CHANGELOG.md")

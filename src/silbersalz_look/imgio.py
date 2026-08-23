@@ -123,11 +123,27 @@ def _decode_via_opj(path: Path, reduce: int) -> tuple[np.ndarray, int]:
     return arr[..., :3].astype(np.float32) / 255.0, 8
 
 
+def _decode_jxl_16(path: Path) -> tuple[np.ndarray, int, bytes | None]:
+    """True 16-bit JXL decode via imagecodecs (Pillow's plugin returns 8-bit)."""
+    import imagecodecs
+
+    arr = imagecodecs.jpegxl_decode(path.read_bytes())
+    icc = None
+    try:
+        icc = Image.open(path).info.get("icc_profile")
+    except Exception:
+        pass
+    if arr.dtype == np.uint16:
+        return arr[..., :3].astype(np.float32) / 65535.0, 16, icc
+    return arr[..., :3].astype(np.float32) / 255.0, 8, icc
+
+
 def read_image(path: str | Path, max_px: int | None = None) -> ImageData:
     """Decode any supported format to float32 [0,1] RGB code values.
 
     max_px: optional cap on the long edge; decoders downsample when they can
     (JPEG draft mode, JP2 reduced-resolution decode), else we resize after.
+    JXL is decoded at true bit depth via imagecodecs (Pillow's plugin is 8-bit).
     """
     path = Path(path)
     ext = path.suffix.lower()
@@ -135,31 +151,34 @@ def read_image(path: str | Path, max_px: int | None = None) -> ImageData:
     rgb = None
     depth = 8
 
-    try:
-        img = Image.open(path)
-        icc = img.info.get("icc_profile")
-        exif = img.info.get("exif")
-        if max_px and ext in (".jpg", ".jpeg"):
-            img.draft("RGB", (max_px, max_px))
-        if ext in (".jp2", ".j2k") and max_px:
-            full = max(img.size)
-            reduce = 0
-            while full / (2 ** (reduce + 1)) >= max_px:
-                reduce += 1
-            if reduce:
-                try:
-                    img.reduce_factor = 2 ** reduce  # openjpeg plugin hint
-                except Exception:
-                    pass
-        rgb, depth = _pil_to_float(img)
-    except Exception:
-        if ext in (".jp2", ".j2k"):
-            reduce = 0
-            if max_px:
-                reduce = 3
-            rgb, depth = _decode_via_opj(path, reduce)
-        else:
-            rgb, depth = _decode_via_sips(path, max_px)
+    if ext == ".jxl":
+        try:
+            rgb, depth, icc = _decode_jxl_16(path)
+        except Exception:
+            rgb = None
+    if rgb is None:
+        try:
+            img = Image.open(path)
+            icc = img.info.get("icc_profile")
+            exif = img.info.get("exif")
+            if max_px and ext in (".jpg", ".jpeg"):
+                img.draft("RGB", (max_px, max_px))
+            if ext in (".jp2", ".j2k") and max_px:
+                full = max(img.size)
+                reduce = 0
+                while full / (2 ** (reduce + 1)) >= max_px:
+                    reduce += 1
+                if reduce:
+                    try:
+                        img.reduce_factor = 2 ** reduce  # openjpeg plugin hint
+                    except Exception:
+                        pass
+            rgb, depth = _pil_to_float(img)
+        except Exception:
+            if ext in (".jp2", ".j2k"):
+                rgb, depth = _decode_via_opj(path, 3 if max_px else 0)
+            else:
+                rgb, depth = _decode_via_sips(path, max_px)
 
     if max_px and max(rgb.shape[:2]) > max_px:
         import cv2
@@ -167,10 +186,7 @@ def read_image(path: str | Path, max_px: int | None = None) -> ImageData:
         scale = max_px / max(rgb.shape[:2])
         rgb = cv2.resize(
             rgb,
-            (
-                max(1, round(rgb.shape[1] * scale)),
-                max(1, round(rgb.shape[0] * scale)),
-            ),
+            (max(1, round(rgb.shape[1] * scale)), max(1, round(rgb.shape[0] * scale))),
             interpolation=cv2.INTER_AREA,
         )
 
@@ -181,6 +197,20 @@ def read_image(path: str | Path, max_px: int | None = None) -> ImageData:
         bit_depth=depth,
         source=path,
     )
+
+
+def original_size(path: str | Path) -> tuple[int, int]:
+    """(width, height) from the file header, without decoding pixels."""
+    path = Path(path)
+    if path.suffix.lower() == ".jxl":
+        try:
+            import imagecodecs
+            arr = imagecodecs.jpegxl_decode(path.read_bytes())  # no header-only API; decode is the honest path
+            return arr.shape[1], arr.shape[0]
+        except Exception:
+            pass
+    with Image.open(path) as im:
+        return im.size
 
 
 def icc_description(icc_bytes: bytes | None) -> str:

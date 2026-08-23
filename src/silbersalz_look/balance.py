@@ -1,9 +1,11 @@
 """Per-image exposure / white-balance normalization at apply time.
 
-Mimics the lab's per-shot correction. The archive catalog shows the lab
-*preserved scene color temperature* (golden scenes stay warm, overcast stays
-cool), so the default mode is `exposure`: one scalar linear gain per frame.
-`auto` (per-channel gray-world style) and `wb-only` remain available.
+OFF BY DEFAULT. Measured on 27 real pairs, normalising each frame toward a
+fixed anchor made results far WORSE than the bare LUT (median dE2000 6.5 vs
+2.5): the lab's own per-frame corrections were only +/-0.04 stop, while this
+estimator swings +/-0.35 stop with no correlation to them. The modes remain
+available for manual/experimental use (`exposure`: one scalar gain; `auto`:
+per-channel; `wb-only`).
 """
 from __future__ import annotations
 
@@ -11,14 +13,17 @@ import numpy as np
 
 from . import color
 
-DEFAULT_MODE = "exposure"
+DEFAULT_MODE = "off"
 EXPOSURE_CLAMP = (0.75, 1.33)   # +/- ~0.4 stop: flats have little highlight headroom
 CHANNEL_CLAMP = (0.5, 2.0)
 
 
+LUMA_P3 = np.array([0.2289746, 0.6917385, 0.0792869])  # Display P3 -> Y (linear)
+
+
 def _midtone_linear(rgb_area: np.ndarray) -> np.ndarray:
     lin = color.eotf(rgb_area.reshape(-1, 3).astype(np.float64))
-    luma = lin.mean(axis=1)
+    luma = lin @ LUMA_P3
     lo, hi = np.quantile(luma, [0.25, 0.75])
     mid = lin[(luma >= lo) & (luma <= hi)]
     return mid if len(mid) >= 100 else lin
@@ -29,7 +34,7 @@ def anchors_from_pixels(rgb_px: np.ndarray) -> dict:
     mid = _midtone_linear(rgb_px)
     return {
         "p50_linear": [float(np.median(mid[:, c])) for c in range(3)],
-        "luma_p50_linear": float(np.median(mid.mean(axis=1))),
+        "luma_p50_linear": float(np.median(mid @ LUMA_P3)),
     }
 
 
@@ -50,7 +55,7 @@ def estimate_gains(
         target = anchors.get("luma_p50_linear")
         if target is None:
             target = float(np.mean(anchors["p50_linear"]))
-        current = float(np.median(mid.mean(axis=1)))
+        current = float(np.median(mid @ LUMA_P3))
         gains = np.full(3, target / max(current, 1e-6))
     else:
         target = np.asarray(anchors["p50_linear"], dtype=np.float64)

@@ -43,8 +43,8 @@ RawTherapee uses **HaldCLUT** PNGs: `sslook export-hald LUT.cube` writes one; pu
 pipx install open-silbersalz              # or: pip install open-silbersalz
 sslook apply --lut silbersalz-gold200_v1-paired_33.cube --in ~/scans/roll12
 ```
-Output goes to a sibling folder `Graded_<version>/`, ICC and EXIF preserved. Add `--rotations rotations.json` after running `scripts/auto_rotate.py` for content-based upright orientation.
+Output goes to a sibling folder `Graded_<version>/`, ICC and EXIF preserved (JPEG q95, 4:4:4; 16-bit output is on the roadmap). Add `--rotations rotations.json` after running `scripts/auto_rotate.py` for content-based upright orientation.
 
 ## Expectations
 - Fidelity is stated per LUT in the README (held-out ΔE2000 against the lab's own graded files where pairs exist; "provisional" where they don't).
-- The lab also applied a small per-roll density offset and set black per frame; `sslook apply` reproduces that automatically, a LUT in a host app does not — nudge exposure ±0.1–0.2 stop to taste.
+- The lab also applied a small per-roll density offset and set black per frame (≈ ±0.04 stop). Nothing here reproduces that automatically — we measured that automatic per-frame balancing makes results *worse* than the bare LUT — so `sslook apply` and a host app give the same result. Nudge exposure to taste.

@@ -1,8 +1,35 @@
-"""Labeled contact/judgement sheets: every tile captioned with what it is."""
+"""Labeled contact/judgement sheets: every tile captioned with what it is.
+
+Colour management: all working images are Display P3 code values. Sheets for
+the web are converted colorimetrically to sRGB and saved WITH an embedded
+sRGB profile, so browsers (which assume sRGB for untagged images) show them
+as intended. `save_sheet(..., p3=True)` instead embeds a Display P3 profile.
+"""
 from __future__ import annotations
 
+import io
+
 import numpy as np
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageCms, ImageDraw, ImageFont
+
+from . import color
+
+
+def _srgb_profile_bytes() -> bytes:
+    return ImageCms.ImageCmsProfile(ImageCms.createProfile("sRGB")).tobytes()
+
+
+def tile_to_srgb8(img_p3: np.ndarray) -> np.ndarray:
+    """P3 code values -> sRGB 8-bit (colorimetric, gamut-clipped)."""
+    srgb = color.convert_p3_to_srgb(np.clip(img_p3, 0, 1).astype(np.float64))
+    return (np.clip(srgb, 0, 1) * 255 + 0.5).astype(np.uint8)
+
+
+def save_sheet(img: Image.Image, path, quality: int = 88, p3_icc: bytes | None = None) -> None:
+    """Save with an embedded profile: sRGB by default (tiles were converted),
+    or the given Display P3 profile bytes if tiles were kept in P3."""
+    icc = p3_icc if p3_icc is not None else _srgb_profile_bytes()
+    img.save(str(path), quality=quality, icc_profile=icc, subsampling=0)
 
 
 def _font(size: int):
@@ -16,8 +43,10 @@ def _font(size: int):
 
 
 def build_sheet(rows: list[dict], tile_h: int = 300, pad: int = 8, caption_h: int = 26, title_h: int = 30,
-                bg=(26, 26, 26)) -> Image.Image:
-    """rows: [{"title": str, "tiles": [(rgb_float_img, caption_str, color_rgb|None), ...]}]"""
+                bg=(26, 26, 26), to_srgb: bool = True) -> Image.Image:
+    """rows: [{"title": str, "tiles": [(rgb_float_img, caption_str, color_rgb|None), ...]}]
+    Tiles are Display P3 code values; converted to sRGB for display unless to_srgb=False.
+    Save the result with `save_sheet` so the profile is embedded."""
     font_c, font_t = _font(15), _font(18)
     row_imgs = []
     for row in rows:
@@ -25,7 +54,8 @@ def build_sheet(rows: list[dict], tile_h: int = 300, pad: int = 8, caption_h: in
         for img, cap, col in row["tiles"]:
             h, w = img.shape[:2]
             s = tile_h / h
-            t = Image.fromarray((np.clip(img, 0, 1) * 255).astype(np.uint8)).resize((max(8, round(w * s)), tile_h), Image.LANCZOS)
+            arr8 = tile_to_srgb8(img) if to_srgb else (np.clip(img, 0, 1) * 255 + 0.5).astype(np.uint8)
+            t = Image.fromarray(arr8).resize((max(8, round(w * s)), tile_h), Image.LANCZOS)
             tiles.append((t, cap, col or (70, 70, 70)))
         W = sum(t.width for t, _, _ in tiles) + pad * (len(tiles) + 1)
         H = title_h + tile_h + caption_h + pad
