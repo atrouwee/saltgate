@@ -1,99 +1,71 @@
-# silbersalz-look
+<h1 align="center">open-silbersalz</h1>
+<p align="center"><b>The SILBERSALZ35 lab look, reconstructed — for the flat scans the lab never got to grade.</b></p>
+<p align="center">
+  <a href="#get-the-look-in-5-minutes">Get the look</a> ·
+  <a href="#what-exists-and-how-good-it-is">LUTs &amp; fidelity</a> ·
+  <a href="#help-we-need-vision3-pairs">Donate pairs</a> ·
+  <a href="#for-tinkerers-run-the-tools">Run the tools</a> ·
+  <a href="docs/FINDINGS.md">What we learned</a>
+</p>
 
-**Community reverse-engineering of the SILBERSALZ35 film-lab color grade.**
+<p align="center"><img src="docs/examples/hero_250d_before_after.jpg" width="900" alt="lab flat scan (left) and open-silbersalz render (right), three frames of Vision3 250D"></p>
 
-[SILBERSALZ35](https://silbersalz35.com/) sold Kodak Vision3 motion-picture film for stills, developed it in true ECN-2 chemistry, scanned it, and applied a beloved signature cinematic grade. The lab has ceased operating; many of us received our final rolls as **flat (ungraded) scans only** — the graded versions will never come.
+[SILBERSALZ35](https://silbersalz35.com/) sold Kodak Vision3 cine film for stills, developed it in ECN-2, scanned it and applied a much-loved cinematic grade. The lab has closed. Many of us received our last rolls as **flat ("raw") scans only** — the graded versions will never come.
 
-This project rebuilds that grade, openly:
+This project rebuilds the grade in the open: standard `.cube` LUTs you can drop into your editing app, a batch tool that also fixes orientation, and the method and data behind it so the community can extend it to every stock the lab scanned.
 
-- **`.cube` 3D LUTs** that transform Silbersalz flat scans toward the lab's look — usable in DaVinci Resolve, Lightroom (as profiles), Capture One, RawTherapee, Affinity, etc.
-- **`sslook`**, a Python CLI that batch-grades whole folders of flat JPGs, with optional per-shot auto exposure/white-balance (the lab balanced every shot).
-- The **full method and fitting code**, so anyone can reproduce, improve, or extend it.
+---
 
-## How the grade is recovered
+## Get the look in 5 minutes
 
-Two tracks, honestly labeled:
+1. **Find your stock** in the table below and download its `.cube` from [`luts/`](luts/) (or the latest [release](../../releases)).
+2. **Apply it to the untouched flat scan** — the lab's `…_RAW_COLOR.jpg` / raw delivery, before any adjustment of your own. The LUT expects exactly that file (Display P3 tagged) and outputs the look in Display P3.
+3. Follow the two-line recipe for your app in **[docs/USING_THE_LUTS.md](docs/USING_THE_LUTS.md)** — Resolve, Photoshop, Affinity, Capture One, Lightroom (via a Camera Raw profile), darktable, RawTherapee.
+4. Nudge exposure ±0.1–0.2 stop to taste. The lab also set a per-roll density and a per-frame black point; the batch tool reproduces those, a LUT in a host app does not.
 
-| Track | LUT tag | Data it needs | Fidelity |
+> **Rotation:** the lab's raw scans are delivered in film-strip orientation. The LUT doesn't care; if you want whole rolls upright automatically, see the batch tool below.
+
+## What exists, and how good it is
+
+Honest labels. *Paired* LUTs are fitted on real raw/graded pairs of the same frames and validated on frames the fit never saw. *Provisional* LUTs are statistical approximations — the character, not the grade.
+
+| Stock | LUT | Status | Fidelity |
 |---|---|---|---|
-| **A — paired fit** | `v1-paired` | Donated **flat + graded pairs** of the same frame | High: it directly fits the lab's transform, separating the shared base look from per-shot balancing |
-| **B — statistical fallback** | `v0-statistical` | Flat scans + a library of graded-only deliveries | Provisional: matches color *distributions*, not the actual transform. Superseded by v1 as pairs arrive |
+| **Kodak Gold 200** (C-41) | `silbersalz-gold200_v1-paired_33.cube` | **Paired** — 27 pairs (thanks Cody) | held-out median ΔE2000 **1.5** — visually indistinguishable from the lab's files |
+| **Vision3 250D** | `silbersalz-250d_v0-statistical_33.cube` | Provisional — no pairs yet | matches tone and cast; renders skin ~8 L\* lighter and skies ~7 L\* darker than the lab |
+| Vision3 250D | `silbersalz-250d_v1-bridged_33.cube` | Experimental — Gold look + statistical bridge | not recommended (colour cast) |
+| Vision3 50D / 200T / 500T / 125 Special | — | **needs pairs** | — |
+| other C-41 stocks the lab scanned | — | needs pairs | — |
 
-**We need pair donations!** If you have any frame delivered both flat and graded, see [docs/DONATING_PAIRS.md](docs/DONATING_PAIRS.md). Around 10 pairs per film stock is enough to fit a solid LUT.
+The lab changed scanners around 2021; all LUTs so far are for the **APOLLON 14K era** (the 14012×10508 raw files). Full history: [`luts/CHANGELOG.md`](luts/CHANGELOG.md).
 
-## LUT coverage
+## Help: we need Vision3 pairs
 
-| Stock | classic era (pre-APOLLON) | APOLLON 14K era |
-|---|---|---|
-| 250D | — | `v0-statistical` (provisional), `v1-bridged` (Gold 200 look + statistical tone bridge, experimental) |
-| 50D | *needs pairs* | *needs pairs* |
-| 200T | *needs pairs* | *needs pairs* |
-| 500T | *needs pairs* | *needs pairs* |
-| 125 Special | *needs pairs* | *needs pairs* |
-| **Gold 200** (C-41) | *needs pairs* | **`v1-paired`** — 27 real pairs, held-out ΔE2000 1.5 |
-| other C-41 stocks | *needs pairs* | *needs pairs* |
+One thing turns a provisional LUT into a real one: **frames the lab delivered both raw and graded**. Five to ten frames of a stock are enough for a first LUT; a mix of light (sun, shade, tungsten, flash, under/over-exposed) and some people in them help most. The graded `.jxl` beats the `.jpg` if you have it.
 
-The lab switched scanners around 2021 (older deliveries are lower-resolution); the grade may differ between eras, so LUTs are fitted per *(stock, era)* cohort and merged only when a cross-era holdout test shows the grades actually agree.
+**[How to donate pairs →](docs/DONATING_PAIRS.md)** (what to send, how it's used, privacy — images are used only to fit the transform and are never published.)
 
-## LUT conventions (important)
-
-- **Input**: the flat scan's code values, normalized to [0,1], as delivered — Silbersalz flats are tagged **Display P3**. Apply the LUT directly to the untouched flat scan.
-- **Output**: graded display code values, **Display P3** (the same tagging the lab's own graded JPEGs carried).
-- Domain `[0,1]³`, size 33³, trilinear interpolation. Every `.cube` ships with a `.stats.json` sidecar recording provenance, fit metrics, and the auto-balance anchors `sslook` uses.
-- In Resolve: set the clip/timeline color space to Display P3 (or work device-agnostically and judge by eye). In Lightroom/Capture One, apply to the original flat JPG without prior adjustments.
-
-Because the LUT is fitted on the *unmodified* flat scans, apply it **before** any of your own corrections.
-
-## Quickstart
+## For tinkerers: run the tools
 
 ```bash
-python3 -m venv .venv && .venv/bin/pip install -e .
+pipx install open-silbersalz            # core: numpy/scipy/pillow/opencv
+pipx inject open-silbersalz torch torchvision   # optional: content-based auto-rotation
 
-# grade a folder of flat scans with the current 250D LUT
-.venv/bin/sslook apply \
-  --lut luts/silbersalz-250d_v0-statistical_33.cube \
-  --in  /path/to/your/flat/scans \
-  --balance exposure        # default; --density -0.3 for a denser print
+sslook apply --lut silbersalz-gold200_v1-paired_33.cube --in ~/scans/roll12      # grade a folder -> Graded_v1-paired/
+python scripts/auto_rotate.py --in ~/scans/roll12 --out rotations.json --sheet review.jpg
+sslook apply --lut ... --in ~/scans/roll12 --rotations rotations.json
 
-# outputs land in a sibling folder Graded_<version>/, ICC+EXIF preserved
+sslook validate-pair pairs/you/frame017/          # check a donated pair (alignment, sample count)
+sslook fit-pairs --pairs pairs --stock 250d --holdout --out luts/silbersalz-250d_v1-paired_33.cube
+sslook export-hald luts/...cube                   # HaldCLUT PNG for RawTherapee / G'MIC
 ```
 
-Other commands:
+Memory-aware by default (147-MP frames are processed in strips, 2–3 workers). Pairs go in `pairs/<donor>/<name>/{flat.*, graded.*, meta.yaml}`; every fit prints a per-band / per-hue residual table and writes a labeled fit-check sheet. Details: [docs/METHOD.md](docs/METHOD.md).
 
-```bash
-sslook validate-pair pairs/<you>/<pair-name>/   # QA a donated pair (alignment check)
-sslook fit-pairs --pairs pairs/ --stock 250d --out luts/silbersalz-250d_v1-paired_33.cube --holdout
-sslook fit-statistical --flats FLATDIR --archive GRADEDDIR --out luts/...cube
-sslook report --in FLATDIR --compare GRADEDDIR --out report/
-```
+## What we learned
 
-## Situation catalog (analysis tool)
+The pairs settled what the lab actually did: a **global, colour-only transform** (no local contrast, no sharpening), **per-roll density**, a **per-frame black point**, and **no per-shot white balance** — golden light stays warm, overcast stays cool. Every stock has its own raw encoding, so LUTs don't transfer between stocks; statistics can match tone but not the colour structure of the look. The full research log with numbers: **[docs/FINDINGS.md](docs/FINDINGS.md)**.
 
-`scripts/build_catalog.py` clusters a graded archive into *situations* (k-means on perceptual + layout features) and writes per-cluster contact sheets and grade fingerprints (`report/catalog/`). It showed that the lab **preserved scene color temperature** (golden scenes stay warm, overcast stays cool) and corrected mostly exposure per shot — which is why `sslook apply` defaults to `--balance exposure` (scalar gain, clamped to ±0.4 stop, soft highlight knee) rather than gray-world white balance. `sslook fit-structured` fits a parametric grade against those situation profiles (`v0.2-structured`).
+## Credits, privacy, license
 
-## Caveats of the current no-pair LUTs (`v0-statistical`, `v0.2-structured`)
-
-- It was fitted by matching the color distribution of one flat roll against ~700 graded frames from 13 past deliveries (all 250D, APOLLON era). Distribution matching cannot capture hue-dependent nonlinearities of the true grade, and scene-content differences between rolls bias it despite robust trimming.
-- Treat it as "the Silbersalz *character*", not "the Silbersalz *grade*". The paired fit will replace it.
-
-## Contributing
-
-- **Most valuable**: donate flat/graded pairs — [docs/DONATING_PAIRS.md](docs/DONATING_PAIRS.md).
-- Method details and math: [docs/METHOD.md](docs/METHOD.md); research log and what we learned: [docs/FINDINGS.md](docs/FINDINGS.md).
-- Issues and PRs welcome — especially per-app LUT installation notes and validation on your own rolls.
-
-## License
-
-MIT for all code and LUTs. Donated images are used only for fitting and are never redistributed — see the privacy note in the donation guide.
-
-## Auto-rotation (run first)
-
-Scans are delivered in film-strip orientation; portrait and upside-down frames are not rotated. Decide rotations once per roll, review, then grade:
-
-```bash
-.venv/bin/python scripts/auto_rotate.py --in FLATDIR --out rotations.json --sheet review.jpg
-.venv/bin/python scripts/auto_rotate.py --set rotations.json 0026=2 0044=1    # fix flagged frames (k = 90° CCW steps)
-.venv/bin/sslook apply --lut luts/...cube --in FLATDIR --rotations rotations.json
-```
-
-Cues: a rotation probe on spatially pooled ResNet-50 features (self-supervised on the graded archive) fused with a YuNet face detector (`models/`). Confident decisions are ~90% right; low-confidence frames are marked red on the review sheet for a manual `--set`.
+Built by Adriaan Trouwee with the Silbersalz community. Pairs: Cody (Gold 200). Donated images are used only for fitting and never redistributed; the LUTs contain no image content. Code and LUTs: **MIT**. "SILBERSALZ35" is the lab's name, used here descriptively; this is an independent community project.

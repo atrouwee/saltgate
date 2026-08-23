@@ -176,6 +176,16 @@ def _cmd_report(args) -> int:
     return 0
 
 
+def _cmd_export_hald(args) -> int:
+    from . import lut
+
+    lattice, _ = lut.read_cube(args.lut)
+    out = Path(args.out) if args.out else Path(args.lut).with_suffix(".hald.png")
+    lut.write_hald_png(out, lattice, level=args.level)
+    print(f"[done] wrote {out}")
+    return 0
+
+
 def _cmd_validate_pair(args) -> int:
     from . import fit_pairs as fp
 
@@ -272,6 +282,10 @@ def main(argv=None) -> int:
     p.add_argument("--out", default="report")
     p.add_argument("--cols", type=int, default=6)
     p.set_defaults(fn=_cmd_report)
+
+    p = sub.add_parser("export-hald", help="export a .cube as a HaldCLUT PNG (RawTherapee, G'MIC)")
+    p.add_argument("lut"); p.add_argument("--out", default=None); p.add_argument("--level", type=int, default=8)
+    p.set_defaults(fn=_cmd_export_hald)
 
     p = sub.add_parser("validate-pair", help="QA one donated pair directory")
     p.add_argument("pair_dir")
