@@ -10,7 +10,7 @@
 
 <p align="center"><img src="docs/examples/hero_250d_before_after.jpg" width="900" alt="lab flat scan and open-silbersalz render, six Vision3 250D frames across daylight, overcast, indoor and tungsten light"></p>
 
-[SILBERSALZ35](https://silbersalz35.com/) sold Kodak Vision3 cine film for stills, developed it in ECN-2, scanned it and applied a much-loved cinematic grade. The lab has closed. Many of us received our last rolls as **flat ("raw") scans only** — the graded versions will never come.
+[SILBERSALZ35](https://silbersalz35.com/) — the still-film service of SILBERSALZ Film GmbH (Stuttgart, later Berlin) — respooled Kodak Vision3 cine film into 35 mm cartridges, processed it in genuine ECN-2, scanned it on its own APOLLON camera-scanner (up to 14,200 × 8,900 px) and applied a much-loved cinematic grade. In 2026 the lab ran into severe operational trouble and stopped fulfilling orders; many of us received our last rolls as **flat ("raw") scans only** — the graded versions never came.
 
 This project rebuilds the grade in the open: standard `.cube` LUTs you can drop into your editing app, a batch tool that also fixes orientation, and the method and data behind it so the community can extend it to every stock the lab scanned.
 
@@ -37,7 +37,12 @@ Honest labels. *Paired* LUTs are fitted on real raw/graded pairs of the same fra
 | Vision3 50D / 200T / 500T / 125 Special | — | **needs pairs** | — |
 | other C-41 stocks the lab scanned | — | needs pairs | — |
 
-The lab changed scanners around 2021; all LUTs so far are for the **APOLLON 14K era** (the 14012×10508 raw files). Full history: [`luts/CHANGELOG.md`](luts/CHANGELOG.md).
+The lab introduced its APOLLON scanner in 2023; all LUTs so far are for **APOLLON-era raw files** (14012 × 10508 px). Earlier deliveries came from a different scanner and will need their own pairs. Full history: [`luts/CHANGELOG.md`](luts/CHANGELOG.md).
+
+<details><summary><b>About SILBERSALZ35 (context)</b></summary>
+
+SILBERSALZ Film GmbH was founded in 2011 as a commercial film-production company and moved into analog stills with SILBERSALZ35: Vision3 50D / 250D / 200T / 500T (plus a "125 Special"), ECN-2 processing, and scanning. From 2023 the scans came from APOLLON, a custom scanner built around a 150-MP Phase One sensor array, delivered as a 4K gallery with a paid full-resolution upgrade (the `HIGH` / `FULL` in the filenames), 16-bit JP2/JXL plus 8-bit JPG, tagged Display P3. Graded files were the default; "raw colour" flats were available on request — and became the only thing many customers got in 2026. Sources: Kodak's [feature on the service](https://www.kodak.com/en/motion/blog-post/silbersalz35/), the lab's product pages, and customers' delivery archives.
+</details>
 
 ## Help: we need Vision3 pairs
 
