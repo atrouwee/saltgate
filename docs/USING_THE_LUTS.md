@@ -28,7 +28,7 @@ Adjustments → **LUT** → *Load LUT* → choose the `.cube`.
 Lightroom cannot load `.cube` directly; it needs a **profile** (`.xmp`) with the LUT embedded. Create it once in Adobe Camera Raw (Photoshop):
 1. Open any of your flat JPGs in Camera Raw (Photoshop → File → Open, or Filter → Camera Raw Filter).
 2. In the *Presets* panel, **Alt/Option-click** the *Create Preset* (+) button → the hidden **Create Profile** dialog opens.
-3. Name it (e.g. `Open Silbersalz · 250D`), set Profile Group, tick **Look Table** → *Load 3D LUT* → choose the `.cube`; leave other adjustments off.
+3. Name it (e.g. `SALTGATE · 250D`), set Profile Group, tick **Look Table** → *Load 3D LUT* → choose the `.cube`; leave other adjustments off.
 4. Save → it appears in Lightroom's *Profile Browser* (restart Lightroom if needed). Apply it to the flat JPG with all sliders at zero.
 We publish the resulting `.xmp` profiles here as community members create and verify them (see `profiles/`).
 
@@ -40,7 +40,7 @@ RawTherapee uses **HaldCLUT** PNGs: `sslook export-hald LUT.cube` writes one; pu
 
 ## Command line (any OS, batch, with auto-rotation)
 ```bash
-pipx install open-silbersalz              # or: pip install open-silbersalz
+pipx install saltgate              # or: pip install saltgate
 sslook apply --lut silbersalz-gold200_v1-paired_33.cube --in ~/scans/roll12
 ```
 Output goes to a sibling folder `Graded_<version>/`, ICC and EXIF preserved (JPEG q95, 4:4:4; 16-bit output is on the roadmap). Add `--rotations rotations.json` after running `scripts/auto_rotate.py` for content-based upright orientation.
