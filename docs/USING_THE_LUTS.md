@@ -46,5 +46,5 @@ sslook apply --lut silbersalz-gold200_v1-paired_33.cube --in ~/scans/roll12
 Output goes to a sibling folder `Graded_<version>/`, ICC and EXIF preserved (JPEG q95, 4:4:4; 16-bit output is on the roadmap). Add `--rotations rotations.json` after running `scripts/auto_rotate.py` for content-based upright orientation.
 
 ## Expectations
-- Fidelity is stated per LUT in the README (held-out ΔE2000 against the lab's own graded files where pairs exist; "provisional" where they don't).
+- Fidelity is stated per LUT in the README (held-out ΔE2000 against the lab's own graded files where pairs exist; "proxy" where they don't).
 - The lab also applied a small per-roll density offset and set black per frame (≈ ±0.04 stop). Nothing here reproduces that automatically — we measured that automatic per-frame balancing makes results *worse* than the bare LUT — so `sslook apply` and a host app give the same result. Nudge exposure to taste.

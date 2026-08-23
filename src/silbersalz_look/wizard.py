@@ -21,7 +21,7 @@ COL = 12  # receipt label column width
 
 # stock -> (LUT file, status, one-line honesty)
 LUTS = {
-    "250d": ("silbersalz-250d_v0-statistical_33.cube", "PROVISIONAL",
+    "250d": ("silbersalz-250d_v0-statistical_33.cube", "PROXY",
              "a statistical approximation — close in tone, skin a little light, skies a little dark. real 250D pairs will replace it."),
     "gold200": ("silbersalz-gold200_v1-paired_33.cube", "BETA",
                 "fitted from 27 real flat/graded pairs (one donor, two rolls). close to the lab on its own rolls; other rolls may want a small exposure nudge."),
@@ -29,15 +29,16 @@ LUTS = {
 STOCK_CHOICES = [("250d", "Vision3 250D"), ("50d", "Vision3 50D"), ("200t", "Vision3 200T"),
                  ("500t", "Vision3 500T"), ("gold200", "Kodak Gold 200"), ("125special", "125 Special"),
                  ("other", "something else / I don't know")]
-# lab terms for readiness, derived from LUTS: timed (fitted on real pairs) · one-light (one setting for the
-# roll, from the graded archive). Vision3 stocks without their own pairs borrow the 250D one-light: same
-# negative family, same scan encoding. Gold (C-41) is a different curve and never borrows.
-READINESS = {"PROVISIONAL": "one-light", "BETA": "timed", "MEASURED": "timed"}
+# readiness, derived from LUTS: validated (real pairs, checked on rolls the fit never saw) · beta (real pairs,
+# one donor so far) · proxy (no pairs — a stand-in estimated from the author's graded archive). Vision3 stocks
+# without their own LUT borrow the 250D proxy: same negative family, same scan encoding. Gold (C-41) is a
+# different curve and never borrows.
+READINESS = {"PROXY": "proxy", "BETA": "beta", "VALIDATED": "validated"}
 BORROWS = {"50d": "250d", "200t": "250d", "500t": "250d", "125special": "250d", "other": "250d"}
-READINESS_LEGEND = ("timed = colour-timed against real flat + graded pairs from the lab · "
-                    "one-light = no pairs yet, one setting for the roll from ~700 graded lab scans\n"
-                    "one-light (250D) = no pairs for this stock, borrows the 250D setting (same Vision3 family) · "
-                    "more pairs, less guesswork")
+READINESS_LEGEND = ("validated = fitted on real flat + graded pairs and checked on rolls it never saw · "
+                    "beta = fitted on real pairs, one donor so far\n"
+                    "proxy = no pairs yet, a stand-in estimated from the author's ~700 graded lab scans · "
+                    "proxy (250D) = borrows the 250D proxy, same Vision3 family · more pairs, less guesswork")
 
 
 def ask_stock() -> str:
@@ -47,7 +48,7 @@ def ask_stock() -> str:
 
 def readiness(stock: str) -> str | None:
     if stock in LUTS:
-        return READINESS.get(LUTS[stock][1], "one-light")
+        return READINESS.get(LUTS[stock][1], "proxy")
     if stock == "other":
         return None
     return f"{readiness(BORROWS[stock])} (250D)"
@@ -471,9 +472,9 @@ def _run() -> int:
         raise FileNotFoundError(str(cube))
     receipt("film", f"{cube_name.split('_')[0]} · {AMBER}{status}{RESET}")
     if borrowed == "other":
-        note("most Silbersalz rolls were Vision3, so this starts from the 250D one-light setting.")
+        note("most Silbersalz rolls were Vision3, so this starts from the 250D proxy.")
     elif borrowed:
-        note(f"no {dict(STOCK_CHOICES)[borrowed]} pairs yet — borrowing the 250D one-light setting. same Vision3 family, same scan encoding,\n"
+        note(f"no {dict(STOCK_CHOICES)[borrowed]} pairs yet — borrowing the 250D proxy. same Vision3 family, same scan encoding,\n"
              "so it is a fair first pass; real pairs of this stock would replace it. if you have any, please get in touch:\n"
              "https://github.com/atrouwee/saltgate")
     note(honesty)
