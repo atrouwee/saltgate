@@ -41,6 +41,10 @@ class OrientationModel:
             self.probe = (d["W"], d["b"], d["classes"])
         self.det = None
         if use_faces and YUNET_PATH.exists() and hasattr(cv2, "FaceDetectorYN"):
+            try:  # OpenCV prints internal '[ WARN ... ]' lines for the DNN back-end; they mean nothing to users
+                cv2.utils.logging.setLogLevel(cv2.utils.logging.LOG_LEVEL_ERROR)
+            except Exception:
+                pass
             self.det = cv2.FaceDetectorYN.create(str(YUNET_PATH), "", (320, 320), score_threshold=0.6)
 
     # --- features -----------------------------------------------------------
