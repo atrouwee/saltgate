@@ -10,11 +10,13 @@
 
 <p align="center"><img src="docs/examples/hero_250d_before_after.jpg" width="900" alt="lab flat scan and open-silbersalz render, six Vision3 250D frames across daylight, overcast, indoor and tungsten light"></p>
 
-[SILBERSALZ35](https://silbersalz35.com/) — the still-film service of SILBERSALZ Film GmbH (Stuttgart, later Berlin) — respooled Kodak Vision3 cine film into 35 mm cartridges, processed it in genuine ECN-2, scanned it on its own APOLLON camera-scanner (up to 14,200 × 8,900 px) and applied a much-loved cinematic grade. In 2026 the lab ran into severe operational trouble and stopped fulfilling orders; many of us received our last rolls as **flat ("raw") scans only** — the graded versions never came.
+## Why this exists
 
-This project rebuilds the grade in the open: standard `.cube` LUTs you can drop into your editing app, a batch tool that also fixes orientation, and the method and data behind it so the community can extend it to every stock the lab scanned.
+For a few years, [SILBERSALZ35](https://silbersalz35.com/) was the most interesting thing happening to 35 mm colour film. A small Stuttgart film-production company took Kodak's Vision3 motion-picture stock — the film Hollywood shoots on — respooled it into still cartridges, processed it in real ECN-2 chemistry, and scanned it on a scanner of their own design. What came back was unlike any lab scan most of us had seen: enormous files with the full dynamic range of the negative, and a grade drawn from motion-picture colour work — warm skin, olive greens, soft periwinkle skies, shadows that stayed open and a little warm. People shot their families, their travels and their years on it because of that look.
 
----
+The lab's own success outgrew it. Demand kept rising, the scanning got more ambitious (the APOLLON 14K scanner from 2023, a move to a new Berlin lab in 2024), and by 2026 the operation could no longer keep up: staff shortages, months of silence, and hundreds of rolls waiting in a backlog. A customer group of well over a hundred people formed to get negatives back and, through a lot of goodwill on both sides, films were picked up and scans trickled out — but mostly as **flat, ungraded files**, with the grading "to follow". For many of us it never will. As one member put it, what was at stake wasn't money but *photographs that can't be taken again*.
+
+This project is the constructive answer. We take the lab's raw scans and the graded files it did deliver over the years, and reconstruct the grade as open, standard LUTs — so anyone holding flat scans can finish their rolls the way they were meant to look, in whatever software they use. It is not a replacement for the lab, and it takes nothing away from the people who built that look; it's a community keeping it alive for the pictures already on film. Everything here — the LUTs, the tools, the method and what we learned about how the grade actually worked — is public under MIT.
 
 ## Get the look in 5 minutes
 
