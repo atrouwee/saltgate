@@ -14,7 +14,7 @@ for i in range(4):
     inner = np.clip(inner + rng.normal(0, 0.01, inner.shape), 0, 1); img[30:-30, 30:-30] = inner
     Image.fromarray((img * 255).astype(np.uint8)).save(scans / f"26.00_000_00000G_{i+1:04d}-0004.jpg", quality=92)
 answers = f"{scans}\n1\nn\ny\n"
-env = dict(os.environ, PYTHONPATH=str(Path(__file__).resolve().parents[1] / "src"))
+env = dict(os.environ, PYTHONPATH=str(Path(__file__).resolve().parents[1] / "src"), SALTGATE_NO_OPEN="1")
 r = subprocess.run([sys.executable, "-c", "from silbersalz_look.cli import main; raise SystemExit(main([]))"],
                    input=answers, capture_output=True, text=True, env=env, timeout=600)
 out = tmp / "01_XXX_saltgate"

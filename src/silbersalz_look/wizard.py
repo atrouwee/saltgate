@@ -63,6 +63,8 @@ def clean_path(raw: str) -> Path:
 
 
 def open_file(path: Path) -> None:
+    if os.environ.get("SALTGATE_NO_OPEN"):   # tests / headless runs
+        return
     try:
         if sys.platform == "darwin":
             subprocess.run(["open", str(path)], check=False)
