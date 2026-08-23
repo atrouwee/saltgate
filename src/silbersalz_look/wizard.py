@@ -31,14 +31,14 @@ LUTS = {
                 "fitted from 27 real flat/graded pairs (one donor, two rolls). close to the lab on its own rolls; other rolls may want a small exposure nudge."),
 }
 STOCK_CHOICES = [("250d", "Vision3 250D"), ("50d", "Vision3 50D"), ("200t", "Vision3 200T"),
-                 ("500t", "Vision3 500T"), ("gold200", "Kodak Gold 200"), ("125special", "125 Special"),
+                 ("500t", "Vision3 500T"), ("gold200", "Kodak Gold 200"), ("125special", "125T Special"),
                  ("other", "something else / I don't know")]
 # readiness, derived from LUTS: validated (real pairs, checked on rolls the fit never saw) · beta (real pairs,
 # one donor so far) · proxy (no pairs — a stand-in estimated from the author's graded archive). Vision3 stocks
 # without their own LUT borrow the 250D proxy: same negative family, same scan encoding. Gold (C-41) is a
 # different curve and never borrows.
 READINESS = {"PROXY": "proxy", "BETA": "beta", "VALIDATED": "validated"}
-BORROWS = {"200t": "500t", "125special": "250d", "other": "250d"}   # borrow within the balance family: tungsten ← 500T, daylight ← 250D
+BORROWS = {"200t": "500t", "125special": "500t", "other": "250d"}   # borrow within the balance family: tungsten ← 500T, daylight ← 250D
 READINESS_LEGEND = ("validated = fitted on real flat + graded pairs and checked on rolls it never saw · "
                     "beta = fitted on real pairs, one donor so far\n"
                     "proxy = no pairs yet, a stand-in estimated from the author's ~700 graded lab scans · "
@@ -480,9 +480,14 @@ def _run() -> int:
         note("most Silbersalz rolls were Vision3 daylight stock, so this starts from the 250D proxy. tungsten film (200T/500T) would look blue with it — pick the stock if you can.")
     elif borrowed:
         base_name = dict(STOCK_CHOICES)[stock]
-        note(f"no {dict(STOCK_CHOICES)[borrowed]} pairs yet — borrowing the {base_name} LUT: same balance family, same scan encoding,\n"
-             "so it is a fair first pass (daylight and tungsten stocks are 20+ ΔE apart; within a family it is ~3).\n"
-             "real pairs of this stock would replace it. if you have any, please get in touch: https://github.com/atrouwee/saltgate")
+        if borrowed == "125special":
+            note(f"no 125T pairs yet — borrowing the {base_name} LUT: also tungsten-balanced, but 125T 'Edition Vivid' is reportedly a Fuji Eterna\n"
+                 "stock, not Vision3, so expect a larger difference than between two Kodak stocks. real 125T pairs would replace it:\n"
+                 "https://github.com/atrouwee/saltgate")
+        else:
+            note(f"no {dict(STOCK_CHOICES)[borrowed]} pairs yet — borrowing the {base_name} LUT: same balance family, same scan encoding,\n"
+                 "so it is a fair first pass (daylight and tungsten stocks are 20+ ΔE apart; within a family it is ~3).\n"
+                 "real pairs of this stock would replace it. if you have any, please get in touch: https://github.com/atrouwee/saltgate")
     note(honesty)
     out()
 
