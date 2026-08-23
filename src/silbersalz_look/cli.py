@@ -111,9 +111,14 @@ def _cmd_fit_pairs(args) -> int:
     lattice, stats = fp.fit_cohort(live, size=args.size, stage=args.stage)
     if args.holdout:
         stats["holdout_median_dE2000"] = fp.holdout_report(live, size=args.size)
+    from . import pair_report
+    stats["residuals"] = pair_report.residual_report(live, lattice)
+    print("[report] residual anatomy (training pairs):\n" + pair_report.format_report(stats["residuals"]))
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
     fp.save_fit(out, lattice, stats, out.stem)
+    sheet_path = pair_report.fit_check_sheet(live, lattice, Path("report/pairs") / f"fitcheck_{out.stem}.jpg")
+    print(f"[report] fit-check sheet: {sheet_path}")
     print(f"[done] wrote {out} and {out.with_suffix('.stats.json')}")
     return 0
 
