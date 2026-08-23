@@ -169,10 +169,9 @@ def read_image(path: str | Path, max_px: int | None = None) -> ImageData:
                 while full / (2 ** (reduce + 1)) >= max_px:
                     reduce += 1
                 if reduce:
-                    try:
-                        img.reduce_factor = 2 ** reduce  # openjpeg plugin hint
-                    except Exception:
-                        pass
+                    # Pillow's JPEG 2000 plugin decodes at 1/2^reduce when `reduce`
+                    # (number of resolution levels to discard) is set before load().
+                    img.reduce = reduce
             rgb, depth = _pil_to_float(img)
         except Exception:
             if ext in (".jp2", ".j2k"):
