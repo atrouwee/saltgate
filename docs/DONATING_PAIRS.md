@@ -1,4 +1,6 @@
-# Donating flat/graded pairs
+# Contributing flat/graded pairs
+
+First step: get in touch — [open an issue](https://github.com/atrouwee/saltgate/issues) or message Adriaan in the Silbersalz community group — and I'll confirm what to send. The details below are for reference.
 
 The paired fit (the real reverse-engineering) needs examples of the **same frame** delivered by SILBERSALZ35 both **flat (ungraded)** and **graded**. Roughly 10 pairs per film stock give a solid LUT; even 1–2 pairs help.
 

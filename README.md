@@ -2,12 +2,10 @@
 <p align="center"><b>Open tools for finishing flat SILBERSALZ scans — and preserving a colour workflow photographers love.</b></p>
 <p align="center"><i>The name is a wink. The work is sincere.</i></p>
 <p align="center">
-  <a href="#get-the-look-in-5-minutes">Get the look</a> ·
-  <a href="#lut-status-and-evidence">LUT status &amp; evidence</a> ·
-  <a href="#pass-the-salt-contribute-a-pair">Contribute a pair</a> ·
-  <a href="#for-tinkerers-run-the-tools">Run the tools</a> ·
-  <a href="docs/FINDINGS.md">Findings</a> ·
-  <a href="docs/CONTEXT.md">Context</a>
+  <a href="#finish-your-scans">Finish your scans</a> ·
+  <a href="#which-films-and-how-close">Which films, how close</a> ·
+  <a href="#have-flat-and-graded-scans-of-the-same-frames-get-in-touch">Have pairs? Get in touch</a> ·
+  <a href="docs/FINDINGS.md">What we learned</a>
 </p>
 
 <p align="center"><img src="docs/examples/hero_250d_before_after.jpg" width="900" alt="lab flat scan and SALTGATE render, six Vision3 250D frames across daylight, overcast, indoor and tungsten light — provisional 250D LUT"></p>
@@ -26,16 +24,27 @@ The lab's own success outgrew it. Demand kept rising, the scanning got more ambi
 
 This project is the constructive answer. We take the lab's raw scans and the graded files it did deliver over the years, and reconstruct aspects of the grade as open, standard LUTs — so anyone holding flat scans can finish their rolls toward the familiar SILBERSALZ rendering, in whatever software they use. It is not a replacement for the lab, and it takes nothing away from the people who built that look; it's a community keeping it alive for the pictures already on film. Everything here — the LUTs, the tools, the method and what we learned about how the grade actually worked — is public under MIT.
 
-## Get the look in 5 minutes
+## Finish your scans
 
-1. **Find your stock** in the table below and download its `.cube` from [`luts/`](luts/) (or the latest [release](../../releases)).
-2. **Apply it to the untouched flat scan** — the lab's `…_RAW_COLOR.jpg` / raw delivery, before any adjustment of your own. The LUT expects exactly that file (Display P3 tagged) and outputs the look in Display P3.
-3. Follow the two-line recipe for your app in **[docs/USING_THE_LUTS.md](docs/USING_THE_LUTS.md)** — Capture One, DaVinci Resolve, Photoshop, Affinity, Lightroom (via a Camera Raw profile), darktable, RawTherapee.
-4. Nudge exposure ±0.1–0.2 stop to taste if needed. (The lab also applied a small per-roll density and per-frame black adjustment — on the order of ±0.04 stop — which nothing here reproduces automatically; we measured that automatic balancing does more harm than good, so the tools apply the LUT as-is.)
+Three questions, one preview, done. No technical knowledge needed; your originals are never modified.
 
-> **Rotation:** the lab's raw scans are delivered in film-strip orientation. The LUT doesn't care; if you want whole rolls upright automatically, see the batch tool below.
+**1. Install** — open *Terminal* (Mac) and paste:
 
-## LUT status and evidence
+```bash
+curl -fsSL https://raw.githubusercontent.com/atrouwee/saltgate/main/install.sh | sh
+```
+
+**2. Run** — open a new Terminal window and type:
+
+```bash
+saltgate
+```
+
+**3. Answer** — it asks where your scans are (drag the folder into the window), which film it was (it reads the lab's sidecar file when there is one), and whether to put the frames upright. It shows you a **preview of six frames** and only grades the whole roll after you say yes. The graded JPEGs (Display P3, original EXIF) land in a new folder next to your originals, `<your folder>_saltgate/`.
+
+> Prefer to stay in your own editor? Every LUT is a standard `.cube`: [use it in Capture One, Resolve, Photoshop, Lightroom and others →](docs/USING_THE_LUTS.md)
+
+## Which films, and how close
 
 | Label | Meaning |
 |---|---|
@@ -61,6 +70,10 @@ The lab introduced its APOLLON scanner in 2023; all LUTs so far are for **APOLLO
 SILBERSALZ Film GmbH was founded in 2011 as a commercial film-production company and moved into analog stills with SILBERSALZ35: Vision3 50D / 250D / 200T / 500T (plus a "125 Special"), ECN-2 processing, and scanning. From 2023 the scans came from APOLLON, a custom scanner built around a 150-MP Phase One sensor array, delivered as a 4K gallery with a paid full-resolution upgrade (the `HIGH` / `FULL` in the filenames), 16-bit JP2/JXL plus 8-bit JPG, tagged Display P3. Graded files were the default; "raw colour" flats were available on request — and became the only thing many customers got in 2026. Sources: Kodak's [feature on the service](https://www.kodak.com/en/motion/blog-post/silbersalz35/), the lab's product pages, and customers' delivery archives.
 </details>
 
+## Have flat *and* graded scans of the same frames? Get in touch
+
+Pairs are what turn a provisional LUT into a measured one — especially for the Vision3 stocks. If the lab delivered any of your frames both flat and graded (or you received flats in 2026 and the graded versions arrive later — keep both), please reach out to me, Adriaan: [open an issue](../../issues) or message me in the Silbersalz community group. I'll tell you exactly which files to send; they're used only to fit the transform and never published. **More pairs, less guesswork.**
+
 ## What this is — and isn't
 
 SALTGATE **is**:
@@ -78,35 +91,6 @@ SALTGATE **is not**:
 - evidence that every creative decision made by the lab reduces to one LUT;
 - an attempt to diminish or replace the people who created the original workflow.
 
-## Pass the salt: contribute a pair
-
-The most valuable contribution is not code. It is a frame that the lab delivered **both flat and graded**.
-
-Each genuine pair replaces guesswork with measurement. A few diverse frames can start a beta; multiple rolls, photographers, lighting conditions and skin tones are what make a transform dependable. **More pairs, less guesswork.** If you received flat scans in 2026 and the lab later sends the graded versions of the same roll, keep both — that's a perfect pair set. The graded `.jxl` (16-bit) beats the `.jpg` if you have it.
-
-**[How to contribute pairs →](docs/DONATING_PAIRS.md)** — what to send, how it's used, privacy: images are used only to fit the transform and are never published.
-
-## For tinkerers: run the tools
-
-```bash
-pipx install saltgate                   # core: numpy/scipy/pillow/opencv
-pipx inject saltgate torch torchvision   # optional: content-based auto-rotation
-
-sslook apply --lut silbersalz-gold200_v1-paired_33.cube --in ~/scans/roll12      # grade a folder -> Graded_v1-paired/
-python scripts/auto_rotate.py --in ~/scans/roll12 --out rotations.json --sheet review.jpg
-sslook apply --lut ... --in ~/scans/roll12 --rotations rotations.json
-
-sslook validate-pair pairs/you/frame017/          # check a donated pair (alignment, sample count)
-sslook fit-pairs --pairs pairs --stock 250d --holdout --out luts/silbersalz-250d_v1-paired_33.cube
-sslook export-hald luts/...cube                   # HaldCLUT PNG for RawTherapee / G'MIC
-```
-
-Memory-aware by default (147-MP frames are processed in strips, 2–3 workers). Pairs go in `pairs/<donor>/<name>/{flat.*, graded.*, meta.yaml}`; every fit prints a per-band / per-hue residual table and writes a labeled fit-check sheet. Details: [docs/METHOD.md](docs/METHOD.md).
-
-## Method and findings
-
-The pairs settled what the lab actually did: a **global, colour-only transform** (no local contrast, no sharpening), tiny **per-roll density** and **per-frame black** adjustments (≈ ±0.04 stop), and **no per-shot white balance** — golden light stays warm, overcast stays cool. Every stock has its own raw encoding, so LUTs don't transfer between stocks; statistics can match tone but not the colour structure of the look. And a lesson at our own expense: automatic per-frame "balancing" made results worse than the bare LUT, so it's off. The full research log with numbers: **[docs/FINDINGS.md](docs/FINDINGS.md)**.
-
 ## Why "SALTGATE"?
 
 Silver salts sit at the heart of analogue photography. The "-gate" is a small community wink at an unexpectedly complicated chapter in this story.
@@ -121,6 +105,6 @@ This project is our way of taking that influence seriously: studying it carefull
 
 ## Independence, privacy, trademark, license
 
-Built by Adriaan Trouwee with the Silbersalz community. Pairs: Cody (Gold 200) — donated images are never published; pair identifiers in the shipped statistics are anonymised. Independent of and unaffiliated with SILBERSALZ Film GmbH; "SILBERSALZ" and "SILBERSALZ35" are the lab's names, used here descriptively. Donated images are used only for fitting and never redistributed; the LUTs contain no image content. Code and LUTs: **MIT**. Tools are distributed under the package name `saltgate` (Python package `silbersalz_look`, commands `sslook` / `saltgate`).
+Built by Adriaan Trouwee with the Silbersalz community. Pairs: Cody (Gold 200) — donated images are never published; pair identifiers in the shipped statistics are anonymised. Independent of and unaffiliated with SILBERSALZ Film GmbH; "SILBERSALZ" and "SILBERSALZ35" are the lab's names, used here descriptively. The LUTs contain no image content. Code and LUTs: **MIT**.
 
-A dated, sourced timeline of what happened at the lab — kept separate from this README on purpose — is in [docs/CONTEXT.md](docs/CONTEXT.md).
+How it works, what we measured, and the plain-command tools: [docs/METHOD.md](docs/METHOD.md) · [docs/FINDINGS.md](docs/FINDINGS.md) · [docs/TOOLS.md](docs/TOOLS.md). A dated timeline of what happened at the lab, kept separate on purpose: [docs/CONTEXT.md](docs/CONTEXT.md).

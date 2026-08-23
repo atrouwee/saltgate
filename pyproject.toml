@@ -35,7 +35,7 @@ saltgate = "silbersalz_look.cli:main"
 where = ["src"]
 
 [tool.setuptools.package-data]
-silbersalz_look = ["models/*.onnx", "models/*.pkl"]
+silbersalz_look = ["models/*.onnx", "models/*.pkl", "luts/*.cube", "luts/*.json"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
