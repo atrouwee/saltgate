@@ -14,7 +14,7 @@ from PIL import Image, ImageCms
 
 Image.MAX_IMAGE_PIXELS = None  # Silbersalz scans are ~150 MP; that's expected
 
-try:  # registers JXL support in Pillow when the wheel is present
+try:  # optional: registers JXL support in Pillow (only used for metadata); decoding uses imagecodecs
     import pillow_jxl  # noqa: F401
 
     HAVE_JXL_PLUGIN = True

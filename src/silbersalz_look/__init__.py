@@ -1,3 +1,3 @@
-"""saltgate: community reverse-engineering of the SILBERSALZ35 grade."""
+"""saltgate: open tools for finishing flat SILBERSALZ scans."""
 
-__version__ = "0.1.0"
+__version__ = "0.1.1"
