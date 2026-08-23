@@ -23,17 +23,17 @@ This project is the constructive answer. We take the lab's raw scans and the gra
 1. **Find your stock** in the table below and download its `.cube` from [`luts/`](luts/) (or the latest [release](../../releases)).
 2. **Apply it to the untouched flat scan** — the lab's `…_RAW_COLOR.jpg` / raw delivery, before any adjustment of your own. The LUT expects exactly that file (Display P3 tagged) and outputs the look in Display P3.
 3. Follow the two-line recipe for your app in **[docs/USING_THE_LUTS.md](docs/USING_THE_LUTS.md)** — Capture One, DaVinci Resolve, Photoshop, Affinity, Lightroom (via a Camera Raw profile), darktable, RawTherapee.
-4. Nudge exposure ±0.1–0.2 stop to taste. The lab also set a per-roll density and a per-frame black point; the batch tool reproduces those, a LUT in a host app does not.
+4. Nudge exposure ±0.1–0.2 stop to taste if needed. (The lab also applied a small per-roll density and per-frame black adjustment — on the order of ±0.04 stop — which nothing here reproduces automatically; we measured that automatic balancing does more harm than good, so the tools apply the LUT as-is.)
 
 > **Rotation:** the lab's raw scans are delivered in film-strip orientation. The LUT doesn't care; if you want whole rolls upright automatically, see the batch tool below.
 
 ## What exists, and how good it is
 
-Honest labels. *Paired* LUTs are fitted on real raw/graded pairs of the same frames and validated on frames the fit never saw. *Provisional* LUTs are statistical approximations — the character, not the grade.
+Honest labels. *Paired* LUTs are fitted on real raw/graded pairs of the same frames and validated on rolls the fit never saw (ΔE2000 of the bare LUT, no per-frame tweaks — what you actually get). *Provisional* LUTs are statistical approximations — the character, not the grade. Fidelity numbers come with their data basis; a LUT from one donor's two rolls is a **first beta**, not a finished reconstruction.
 
 | Stock | LUT | Status | Fidelity |
 |---|---|---|---|
-| **Kodak Gold 200** (C-41) | `silbersalz-gold200_v1-paired_33.cube` | **Paired** — 27 pairs (thanks Cody) | held-out median ΔE2000 **1.5** — visually indistinguishable from the lab's files |
+| **Kodak Gold 200** (C-41) | `silbersalz-gold200_v1-paired_33.cube` | **Paired, beta** — 27 pairs, one donor, two rolls (thanks Cody) | leave-one-roll-out median ΔE2000 **{{GOLD_BARE}}** (bare LUT), p90 {{GOLD_P90}}; {{GOLD_ORACLE}} with an oracle per-frame density/black (upper bound). Close to the lab's files; more donors needed before calling it final |
 | **Vision3 250D** | `silbersalz-250d_v0-statistical_33.cube` | Provisional — no pairs yet | matches tone and cast; renders skin ~8 L\* lighter and skies ~7 L\* darker than the lab |
 | Vision3 250D | `silbersalz-250d_v1-bridged_33.cube` | Experimental — Gold look + statistical bridge | not recommended (colour cast) |
 | Vision3 50D / 200T / 500T / 125 Special | — | **needs pairs** | — |
@@ -71,7 +71,7 @@ Memory-aware by default (147-MP frames are processed in strips, 2–3 workers). 
 
 ## What we learned
 
-The pairs settled what the lab actually did: a **global, colour-only transform** (no local contrast, no sharpening), **per-roll density**, a **per-frame black point**, and **no per-shot white balance** — golden light stays warm, overcast stays cool. Every stock has its own raw encoding, so LUTs don't transfer between stocks; statistics can match tone but not the colour structure of the look. The full research log with numbers: **[docs/FINDINGS.md](docs/FINDINGS.md)**.
+The pairs settled what the lab actually did: a **global, colour-only transform** (no local contrast, no sharpening), tiny **per-roll density** and **per-frame black** adjustments (≈ ±0.04 stop), and **no per-shot white balance** — golden light stays warm, overcast stays cool. Every stock has its own raw encoding, so LUTs don't transfer between stocks; statistics can match tone but not the colour structure of the look. And a lesson at our own expense: automatic per-frame "balancing" made results worse than the bare LUT, so it's off. The full research log with numbers: **[docs/FINDINGS.md](docs/FINDINGS.md)**.
 
 ## Credits, privacy, license
 

@@ -16,6 +16,7 @@ dependencies = [
     "pillow-jxl-plugin",
     "opencv-python-headless",
     "tifffile",
+    "imagecodecs",
 ]
 
 [project.optional-dependencies]
@@ -37,3 +38,5 @@ silbersalz_look = ["models/*.onnx", "models/*.pkl"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = ["slow: long-running validation (run with -m slow)"]
+addopts = "-m 'not slow'"

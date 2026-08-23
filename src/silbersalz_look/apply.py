@@ -63,7 +63,8 @@ def grade_one(
         exif = img.info.get("exif")
         arr = np.asarray(img.convert("RGB"), dtype=np.uint8).copy()
     h = arr.shape[0]
-    rng = np.random.default_rng(hash(src.name) & 0xFFFFFFFF)
+    import hashlib
+    rng = np.random.default_rng(int(hashlib.sha1(src.name.encode()).hexdigest()[:8], 16))
     for y0 in range(0, h, STRIP_ROWS):
         strip = arr[y0 : y0 + STRIP_ROWS].astype(np.float32) / 255.0
         strip = balance.apply_gains(strip, gains)
@@ -109,6 +110,8 @@ def grade_folder(
     lattice, title = lutmod.read_cube(cube_path)
     stats = lutmod.read_stats_sidecar(cube_path) or {}
     anchors = stats.get("balance_anchors")
+    if balance_mode != "off" and not anchors:
+        log(f"[apply] WARNING: --balance {balance_mode} requested but {cube_path.name} has no .stats.json anchors; no balancing will be applied")
 
     files = [f for f in imgio.list_images(in_dir) if f.suffix.lower() in (".jpg", ".jpeg")]
     if not files:

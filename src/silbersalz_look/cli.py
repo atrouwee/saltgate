@@ -260,9 +260,9 @@ def main(argv=None) -> int:
     p.add_argument("--lut", required=True)
     p.add_argument("--in", dest="in_dir", required=True)
     p.add_argument("--out", default=None)
-    p.add_argument("--balance", default="exposure",
-                   choices=["exposure", "auto", "off", "wb-only"],
-                   help="exposure (default): scalar gain per frame, keeps scene color temperature")
+    p.add_argument("--balance", default="off",
+                   choices=["off", "exposure", "auto", "wb-only"],
+                   help="off (default, recommended): apply the LUT as-is. Automatic per-frame balancing measured WORSE than the bare LUT on real pairs; experimental modes kept for manual use")
     p.add_argument("--balance-strength", type=float, default=1.0)
     p.add_argument("--workers", type=int, default=None, help="default: RAM-aware")
     p.add_argument("--limit", type=int, default=None, help="grade at most N frames")
