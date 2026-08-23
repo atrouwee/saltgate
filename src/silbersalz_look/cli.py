@@ -18,15 +18,9 @@ def _cmd_fit_statistical(args) -> int:
         if f.suffix.lower() in (".jpg", ".jpeg")
     ]
     archive = {}
-    for d in args.archive:
-        d = Path(d)
-        files = imgio.list_images(d)
-        jpg_sub = d / "_JPG"
-        if jpg_sub.is_dir():
-            files = imgio.list_images(jpg_sub)
-        # prefer 8-bit jpegs (fast decode, identical grade to the 16-bit files)
-        jpegs = [f for f in files if f.suffix.lower() in (".jpg", ".jpeg")]
-        archive[d.name] = jpegs or files
+    for spec in args.archive:
+        name, files = _archive_spec(spec)
+        archive[name] = files
     cache = Path(args.cache)
     cache.mkdir(parents=True, exist_ok=True)
     lattice, stats = fs.fit_statistical(
@@ -38,6 +32,23 @@ def _cmd_fit_statistical(args) -> int:
     lut.write_stats_sidecar(out, stats)
     print(f"[done] wrote {out} and {out.with_suffix('.stats.json')}")
     return 0
+
+
+def _archive_spec(spec: str) -> tuple[str, list[Path]]:
+    """'DIR' or 'DIR:glob|glob' -> (label, files). The globs match file names and let one
+    delivery folder be split by stock (e.g. 'Silbersalz35_2024-Aug-1:07[4-9]_*|0[89]?_*|1??_*'
+    for the two 50D rolls inside a four-roll order). Prefers 8-bit JPEGs when both exist."""
+    import fnmatch
+    d, _, pat = spec.partition(":")
+    d = Path(d)
+    sub = d / "_JPG"
+    files = imgio.list_images(sub if sub.is_dir() else d)
+    jpegs = [f for f in files if f.suffix.lower() in (".jpg", ".jpeg")]
+    files = jpegs or files
+    if pat:
+        pats = pat.split("|")
+        files = [f for f in files if any(fnmatch.fnmatch(f.name, g) for g in pats)]
+    return (f"{d.name}:{pat}" if pat else d.name), files
 
 
 def _archive_files(dirs) -> list[Path]:
@@ -226,7 +237,8 @@ def main(argv=None) -> int:
 
     p = sub.add_parser("fit-statistical", help="fit v0 LUT by distribution matching")
     p.add_argument("--flats", required=True)
-    p.add_argument("--archive", action="append", required=True)
+    p.add_argument("--archive", action="append", required=True,
+                   help="graded reference folder; 'DIR:glob|glob' filters by file name (split a folder by stock)")
     p.add_argument("--out", required=True)
     p.add_argument("--beta", type=float, default=0.7)
     p.add_argument("--size", type=int, default=33)
