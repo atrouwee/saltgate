@@ -121,6 +121,6 @@ This project is our way of taking that influence seriously: studying it carefull
 
 ## Independence, privacy, trademark, license
 
-Built by Adriaan Trouwee with the Silbersalz community. Pairs: Cody (Gold 200). Independent of and unaffiliated with SILBERSALZ Film GmbH; "SILBERSALZ" and "SILBERSALZ35" are the lab's names, used here descriptively. Donated images are used only for fitting and never redistributed; the LUTs contain no image content. Code and LUTs: **MIT**. Tools are distributed under the package name `saltgate` (Python package `silbersalz_look`, commands `sslook` / `saltgate`).
+Built by Adriaan Trouwee with the Silbersalz community. Pairs: Cody (Gold 200) — donated images are never published; pair identifiers in the shipped statistics are anonymised. Independent of and unaffiliated with SILBERSALZ Film GmbH; "SILBERSALZ" and "SILBERSALZ35" are the lab's names, used here descriptively. Donated images are used only for fitting and never redistributed; the LUTs contain no image content. Code and LUTs: **MIT**. Tools are distributed under the package name `saltgate` (Python package `silbersalz_look`, commands `sslook` / `saltgate`).
 
 A dated, sourced timeline of what happened at the lab — kept separate from this README on purpose — is in [docs/CONTEXT.md](docs/CONTEXT.md).
