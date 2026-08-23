@@ -7,8 +7,9 @@ from silbersalz_look import lut, __version__
 
 root = Path(__file__).resolve().parents[1]; out = root / "release"; out.mkdir(exist_ok=True)
 stage = out / f"saltgate-luts-{__version__}"; shutil.rmtree(stage, ignore_errors=True); stage.mkdir()
+SUPERSEDED = {"silbersalz-250d_v0-statistical_33.cube"}   # replaced by v0.1 (clean references)
 for cube in sorted((root / "luts").glob("*.cube")):
-    if "bridged" in cube.name or "structured" in cube.name:   # experimental, not shipped
+    if "bridged" in cube.name or "structured" in cube.name or cube.name in SUPERSEDED:   # experimental / superseded, not shipped
         continue
     shutil.copy(cube, stage / cube.name)
     side = cube.with_suffix(".stats.json")
