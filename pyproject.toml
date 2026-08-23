@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "saltgate"
-version = "0.1.7"
+version = "0.1.8"
 description = "SALTGATE: open tools for finishing flat SILBERSALZ scans and preserving a colour workflow photographers love (LUTs, batch grading, pair fitting)."
 readme = "README.md"
 license = { text = "MIT" }
