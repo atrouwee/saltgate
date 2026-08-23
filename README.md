@@ -62,7 +62,8 @@ Fidelity is stated as the ΔE2000 of the *bare LUT* against the lab's own graded
 | **Vision3 250D** | `silbersalz-250d_v0.1-statistical_33.cube` | **Proxy** — no pairs yet | matches tone and cast of the author's graded APOLLON-era 250D archive (16 rolls, ~650 frames, stock per the lab's own filenames and info cards); renders skin ~8 L\* lighter and skies ~7 L\* darker than the lab |
 | Vision3 250D | `silbersalz-250d_v1-bridged_33.cube` | **Experimental** | Gold look + statistical tone bridge; colour cast, not recommended |
 | **Vision3 50D** | `silbersalz-50d_v0-statistical_33.cube` | **Proxy** — no pairs, thin | same method as 250D on the author's three graded 50D rolls (~100 frames); the source distribution is the 250D flat roll, since no 50D flats exist |
-| Vision3 200T / 125 Special | borrows `silbersalz-250d_v0.1-statistical_33.cube` | **Proxy (250D)** — no pairs for these stocks | same negative family and the same scan encoding as 250D, so the 250D proxy is a fair first pass; their own pairs would replace it. (Gold ↔ Vision3 does *not* transfer — different curves) |
+| Vision3 200T | borrows `silbersalz-500t_v1-paired_33.cube` | **Beta (500T)** — no 200T pairs | same tungsten-balanced family; borrowed within the family. Measured: the two daylight stocks' renders sit 3.3 ΔE apart, daylight vs tungsten 23 ΔE — so borrow within the family, never across. Own pairs would replace it |
+| 125 Special | borrows `silbersalz-250d_v0.1-statistical_33.cube` | **Proxy (250D)** — no pairs | assumed daylight-balanced; tell us if yours says otherwise. (Gold ↔ Vision3 does *not* transfer — different curves) |
 | other C-41 stocks the lab scanned | — | needs pairs | — |
 
 The walkthrough shows the same words next to each film: **validated** · **beta** · **proxy** · **proxy (250D)**.

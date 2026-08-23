@@ -38,11 +38,11 @@ STOCK_CHOICES = [("250d", "Vision3 250D"), ("50d", "Vision3 50D"), ("200t", "Vis
 # without their own LUT borrow the 250D proxy: same negative family, same scan encoding. Gold (C-41) is a
 # different curve and never borrows.
 READINESS = {"PROXY": "proxy", "BETA": "beta", "VALIDATED": "validated"}
-BORROWS = {"200t": "250d", "125special": "250d", "other": "250d"}
+BORROWS = {"200t": "500t", "125special": "250d", "other": "250d"}   # borrow within the balance family: tungsten ← 500T, daylight ← 250D
 READINESS_LEGEND = ("validated = fitted on real flat + graded pairs and checked on rolls it never saw · "
                     "beta = fitted on real pairs, one donor so far\n"
                     "proxy = no pairs yet, a stand-in estimated from the author's ~700 graded lab scans · "
-                    "proxy (250D) = borrows the 250D proxy, same Vision3 family · more pairs, less guesswork")
+                    "(250D) / (500T) = borrows that stock's LUT — same balance family; daylight ↔ tungsten measured 20+ ΔE apart · more pairs, less guesswork")
 
 
 def ask_stock() -> str:
@@ -55,7 +55,8 @@ def readiness(stock: str) -> str | None:
         return READINESS.get(LUTS[stock][1], "proxy")
     if stock == "other":
         return None
-    return f"{readiness(BORROWS[stock])} (250D)"
+    base = BORROWS[stock]
+    return f"{readiness(base)} ({dict(STOCK_CHOICES)[base].split()[-1]})"
 LAB_STOCK_CODES = {"XXX": "250d"}   # codes seen in the lab's *_Exported.json; extend as we learn them
 SECONDS_PER_FRAME = 25              # rough; used for the time estimate only
 
@@ -476,11 +477,12 @@ def _run() -> int:
         raise FileNotFoundError(str(cube))
     receipt("film", f"{cube_name.split('_')[0]} · {AMBER}{status}{RESET}")
     if borrowed == "other":
-        note("most Silbersalz rolls were Vision3, so this starts from the 250D proxy.")
+        note("most Silbersalz rolls were Vision3 daylight stock, so this starts from the 250D proxy. tungsten film (200T/500T) would look blue with it — pick the stock if you can.")
     elif borrowed:
-        note(f"no {dict(STOCK_CHOICES)[borrowed]} pairs yet — borrowing the 250D proxy. same Vision3 family, same scan encoding,\n"
-             "so it is a fair first pass; real pairs of this stock would replace it. if you have any, please get in touch:\n"
-             "https://github.com/atrouwee/saltgate")
+        base_name = dict(STOCK_CHOICES)[stock]
+        note(f"no {dict(STOCK_CHOICES)[borrowed]} pairs yet — borrowing the {base_name} LUT: same balance family, same scan encoding,\n"
+             "so it is a fair first pass (daylight and tungsten stocks are 20+ ΔE apart; within a family it is ~3).\n"
+             "real pairs of this stock would replace it. if you have any, please get in touch: https://github.com/atrouwee/saltgate")
     note(honesty)
     out()
 
