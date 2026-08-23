@@ -14,7 +14,7 @@ Several customers received their 2026 rolls as flat scans first, with graded ver
 - **Do not edit either file.** No exposure tweaks, no crops, no "just a little contrast". Hand-edited grades poison the fit (we do detect outliers, but clean data beats cleanup).
 - Any of the lab's delivery formats is fine: `.jpg` / `.jpeg`, `.jp2`, `.jxl`, `.tif`.
 - Resized or cropped versions are usable (our aligner handles scale/crop/rotation), but originals are best.
-- Please note the **film stock** and roughly **when the roll was delivered** (the scanner era matters — deliveries before the APOLLON scanner, i.e. roughly pre-2023, differ from APOLLON-era scans).
+- Please note the **film stock** and roughly **when the roll was delivered** (the scanner era matters — deliveries before the APOLLON scanner, i.e. before about September 2022 — 5900 × 3800 px files — differ from APOLLON-era scans).
 - **Any stock the lab scanned is useful** — the Vision3 stocks (50D / 200T / 250D / 500T / 125 Special) *and* consumer C-41 films they processed (Kodak Gold, Portra, Ultramax, Fuji…). Pairs from other stocks still reveal the structure of the lab's grade, and let us test whether the house look transfers between stocks. Just tag the stock in `meta.yaml`.
 
 ## Which frames help most
@@ -49,7 +49,7 @@ pairs/
 ```yaml
 donor: your-name
 stock: 250D            # 50D | 200T | 250D | 500T | 125special | gold200 | portra400 | ... (any tag)
-era: apollon14k        # apollon14k (2023 onward, ~14K raw files) | classic (earlier scanner) — omit if unsure, we auto-detect
+era: apollon14k        # apollon14k (Sep 2022 onward, ~14K raw files) | classic (earlier scanner, 5900 × 3800) — omit if unsure, we auto-detect
 delivery_date: 2024-08
 illuminant: flash        # daylight | overcast-shade | golden-lowsun | tungsten | flash | fluorescent | mixed
 exposure: normal         # under | normal | over
