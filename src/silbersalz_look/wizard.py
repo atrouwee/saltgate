@@ -202,6 +202,7 @@ def check_for_update() -> None:
         from . import __version__
         with urllib.request.urlopen("https://raw.githubusercontent.com/atrouwee/saltgate/main/pyproject.toml", timeout=2) as r:
             latest = r.read().decode().split('version = "', 1)[1].split('"', 1)[0]
+        latest = os.environ.get("SALTGATE_FAKE_LATEST", latest)   # test hook
     except Exception:
         return
     if _vtuple(latest) <= _vtuple(__version__):
@@ -212,7 +213,12 @@ def check_for_update() -> None:
         out()
         return
     receipt("update", f"v{latest} is available — updating from v{__version__}")
-    proc = subprocess.Popen([uv, "tool", "upgrade", "saltgate"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    # `uv tool upgrade` keeps the git commit recorded at install time, so reinstall from main instead,
+    # carrying the orientation libraries along when they are present.
+    import importlib.util
+    extras = ["--with", "torch", "--with", "torchvision"] if importlib.util.find_spec("torch") else []
+    proc = subprocess.Popen([uv, "tool", "install", "--force", "--python", "3.12", *extras, GIT_SPEC],
+                            stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     spinner_while(proc, "updating")
     text = proc.stdout.read() if proc.stdout else ""
     if proc.returncode != 0:
