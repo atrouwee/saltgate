@@ -167,33 +167,121 @@ def run() -> int:
     """Entry point with a safety net: never show a traceback, always save one."""
     try:
         return _run()
+    except KeyboardInterrupt:
+        say(f"\n{DIM}Stopped. Frames finished so far are kept; run `saltgate` again to continue where you left off.{RESET}")
+        return 130
     except SystemExit:
         raise
-    except Exception:
+    except Exception as e:
         import traceback
         log_path = write_log("error", traceback.format_exc())
         say(f"\n{RED}Something went wrong and I stopped. Nothing of yours was modified.{RESET}")
-        say(f"Details are saved in {log_path} — please attach that file when reporting the problem:")
-        say("https://github.com/atrouwee/saltgate/issues\n")
+        say(f"{BOLD}{explain(e)}{RESET}")
+        say(f"{DIM}Details are saved in {log_path} — attach that file if you report it: https://github.com/atrouwee/saltgate/issues{RESET}\n")
         return 1
+
+
+def explain(e: Exception) -> str:
+    """One plain sentence about what went wrong and what to do."""
+    name = type(e).__name__
+    msg = str(e)
+    if isinstance(e, (ImportError, ModuleNotFoundError)):
+        return "Part of the installation is missing. Re-run the installer line from the README, then try again."
+    if isinstance(e, PermissionError):
+        return "I'm not allowed to write next to your scans (read-only disk or folder?). Copy the folder somewhere like your Desktop and try again."
+    if isinstance(e, OSError) and ("No space" in msg or getattr(e, "errno", None) == 28):
+        return "The disk is full. Graded frames need roughly 30 MB each; free some space and run again — it continues where it stopped."
+    if isinstance(e, FileNotFoundError):
+        return "A file disappeared while I was working (moved, renamed, or a disconnected drive). Check the folder and run again."
+    if isinstance(e, MemoryError):
+        return "The computer ran out of memory. Close other apps and run again — it continues where it stopped."
+    if "CUDA" in msg or "torch" in msg.lower():
+        return "The orientation step hit a problem. Run again and answer 'n' to the orientation question to grade without it."
+    return f"Unexpected problem ({name}). Running again usually helps; it continues where it stopped."
+
+
+def check_for_update() -> None:
+    """One quick request; silent when offline."""
+    try:
+        import urllib.request
+        from . import __version__
+        with urllib.request.urlopen("https://raw.githubusercontent.com/atrouwee/saltgate/main/pyproject.toml", timeout=2) as r:
+            txt = r.read().decode()
+        latest = txt.split('version = "', 1)[1].split('"', 1)[0]
+        if latest != __version__:
+            say(f"{YELLOW}A newer version ({latest}) is available — you have {__version__}. To update, paste the installer line from the README again.{RESET}\n")
+    except Exception:
+        pass
+
+
+def fix_rotation(args: list[str]) -> int:
+    """saltgate fix-rotation <output folder> 0026=1 0031=2 — re-grade those frames from the originals with a new orientation."""
+    if len(args) < 2:
+        say("Usage: saltgate fix-rotation <graded folder> <frame>=<quarter turns> …   e.g. 0026=1"); return 1
+    out_dir = clean_path(args[0])
+    state_path = out_dir / "saltgate.json"
+    if not state_path.exists():
+        say(f"{RED}That folder wasn't made by the walkthrough (no saltgate.json inside).{RESET}"); return 1
+    state = json.loads(state_path.read_text()); rot_path = out_dir / "rotations.json"
+    rotations = json.loads(rot_path.read_text()) if rot_path.exists() else {}
+    from . import apply as ap, lut as lutmod, lut, rebate, imgio, orient
+    src = Path(state["source"]); lattice = lutmod.read_cube(state["lut"])[0]
+    files = {f.name: f for f in imgio.list_images(src) if f.suffix.lower() in (".jpg", ".jpeg")}
+    for spec in args[1:]:
+        if "=" not in spec:
+            say(f"{YELLOW}Skipping '{spec}' — write it as 0026=1{RESET}"); continue
+        tag, k = spec.split("=", 1)
+        matches = [n for n in files if f"_{tag}-" in n or n.startswith(tag)]
+        if not matches:
+            say(f"{YELLOW}No frame matching '{tag}'.{RESET}"); continue
+        for n in matches:
+            cur = rotations.get(n, {}).get("k", 0)
+            new_k = (cur + int(k)) % 4
+            rotations[n] = {"k": new_k, "confidence": 1.0, "manual": True}
+            ap.grade_one(files[n], out_dir / n, lattice, None, "off", 1.0, None, 95, 0.0, new_k)
+            say(f"{GREEN}re-graded {n} turned {int(k)} quarter turn(s) anticlockwise{RESET}")
+    rot_path.write_text(json.dumps(rotations, indent=1))
+    return 0
 
 
 def _run() -> int:
     say(f"\n{BOLD}SALTGATE{RESET} — finish your flat SILBERSALZ scans.")
     say(f"{DIM}The name is a wink. The work is sincere. Your originals are never modified.{RESET}\n")
+    check_for_update()
 
     # 1. folder
+    from . import imgio
     while True:
         raw = ask("Where are your scans? Drag the folder into this window and press Enter:")
         folder = clean_path(raw)
-        if folder.is_dir():
-            break
-        say(f"{YELLOW}I can't find a folder there. Try dragging it from Finder.{RESET}")
-    from . import imgio
-    files = [f for f in imgio.list_images(folder) if f.suffix.lower() in (".jpg", ".jpeg")]
-    if not files:
-        say(f"{RED}No JPG files in that folder. The LUTs work on the lab's JPG 'raw colour' scans.{RESET}")
-        return 1
+        if folder.is_file():
+            say(f"{YELLOW}That's a single file — please drag the whole folder that contains your scans.{RESET}")
+            continue
+        if not folder.is_dir():
+            say(f"{YELLOW}I can't find a folder there. Try dragging it from Finder.{RESET}")
+            continue
+        files = [f for f in imgio.list_images(folder) if f.suffix.lower() in (".jpg", ".jpeg")]
+        if not files:
+            # maybe they dragged the delivery folder that CONTAINS the scan folder(s)
+            subs = [d for d in sorted(folder.iterdir()) if d.is_dir() and not d.name.startswith(".")
+                    and any(f.suffix.lower() in (".jpg", ".jpeg") for f in imgio.list_images(d))]
+            if subs:
+                say(f"No JPGs directly in that folder, but these folders inside it have some:")
+                choice = choose("Which one are the flat scans?", [(str(d), f"{d.name}  ({len([f for f in imgio.list_images(d) if f.suffix.lower() in ('.jpg', '.jpeg')])} JPGs)") for d in subs])
+                folder = Path(choice); files = [f for f in imgio.list_images(folder) if f.suffix.lower() in (".jpg", ".jpeg")]
+            else:
+                others = [f.suffix.lower() for f in imgio.list_images(folder)]
+                if any(x in (".jxl", ".jp2") for x in others):
+                    say(f"{YELLOW}This folder holds the lab's 16-bit files (.jxl/.jp2) — those are the GRADED deliveries. The LUT is for the raw JPG scans (usually named …_RAW_COLOR.jpg).{RESET}")
+                else:
+                    say(f"{YELLOW}No JPG files in that folder. The LUTs work on the lab's JPG 'raw colour' scans.{RESET}")
+                continue
+        raw_named = [f for f in files if "RAW" in f.name.upper()]
+        graded_named = [f for f in files if f.name.upper().endswith("_HIGH.JPG") and "RAW" not in f.name.upper()]
+        if raw_named and graded_named:
+            say(f"This folder has both raw ({len(raw_named)}) and graded ({len(graded_named)}) files — using the raw ones.")
+            files = raw_named
+        break
     n_flat, n_checked = looks_flat(files)
     say(f"\nFound {BOLD}{len(files)}{RESET} JPG frames.", )
     if n_flat == 0:
@@ -266,7 +354,19 @@ def _run() -> int:
     sheet.save_sheet(sheet.build_sheet(rows, tile_h=260), preview, quality=85)
     open_file(preview)
     say(f"Preview saved and opened: {preview}")
-    if not yes(f"\nHappy with it? Grade all {len(files)} frames into {out_dir.name}/?", default=True):
+    already = [f for f in files if (out_dir / f.name).exists()]
+    todo = len(files) - len(already)
+    import shutil as _sh
+    free_gb = _sh.disk_usage(out_dir).free / 1e9
+    need_gb = todo * 0.035
+    mins = max(1, round(todo * 25 / 60))
+    say(f"\nThis will take about {BOLD}{mins} minute{'s' if mins != 1 else ''}{RESET} and roughly {need_gb:.1f} GB of disk space ({free_gb:.0f} GB free).")
+    if already:
+        say(f"{DIM}{len(already)} frames were already graded earlier and will be kept.{RESET}")
+    if need_gb > free_gb:
+        say(f"{RED}Not enough free disk space. Free up about {need_gb - free_gb + 1:.0f} GB and run again.{RESET}")
+        return 1
+    if not yes(f"Happy with the preview? Grade {todo} frames into {out_dir.name}/?", default=True):
         say(f"{DIM}Okay — nothing else was written. The preview stays in {out_dir}.{RESET}")
         return 0
 
@@ -287,7 +387,10 @@ def _run() -> int:
         return 1
     if rotations:
         (out_dir / "rotations.json").write_text(json.dumps(rotations, indent=1))
+    (out_dir / "saltgate.json").write_text(json.dumps({"source": str(folder), "lut": str(cube), "stock": stock, "rotated": bool(rotations)}, indent=1))
     say(f"\n{GREEN}{BOLD}Done.{RESET} {len(files)} graded frames are in {out_dir}")
+    if rotations:
+        say(f"{DIM}A frame the wrong way up? Type:  saltgate fix-rotation \"{out_dir}\" 0026=1   (frame number = quarter turns anticlockwise: 1, 2 or 3){RESET}")
     say("They are JPEGs tagged Display P3, with the original EXIF, ready for Capture One / Lightroom / anything.")
     say(f"\n{DIM}If you ever receive the lab's graded versions of these frames, keep both: flat + graded pairs make this better for everyone.")
     say(f"https://github.com/atrouwee/saltgate{RESET}\n")
