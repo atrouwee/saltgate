@@ -137,3 +137,17 @@ def read_stats_sidecar(cube_path: str | Path) -> dict | None:
     if p.exists():
         return json.loads(p.read_text())
     return None
+
+
+def write_hald_png(path: str | Path, lattice: np.ndarray, level: int = 8) -> None:
+    """HaldCLUT PNG (level 8 = 64^3 samples, 512x512) from a lattice, for
+    RawTherapee / G'MIC and other apps that don't read .cube."""
+    from PIL import Image
+
+    n = level * level
+    ax = np.linspace(0.0, 1.0, n, dtype=np.float32)
+    b, g, r = np.meshgrid(ax, ax, ax, indexing="ij")  # hald order: R fastest, then G, then B
+    rgb = np.stack([r, g, b], axis=-1).reshape(-1, 3)
+    out = apply_trilinear(lattice, rgb)
+    img = (np.clip(out, 0, 1) * 255 + 0.5).astype(np.uint8).reshape(n * level, n * level, 3)
+    Image.fromarray(img).save(str(path), "PNG")

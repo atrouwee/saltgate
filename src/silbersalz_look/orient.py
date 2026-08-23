@@ -18,7 +18,7 @@ import cv2
 import numpy as np
 
 ROOT = Path(__file__).resolve().parents[2]
-MODEL_DIR = ROOT / "models"
+MODEL_DIR = Path(__file__).resolve().parent / "models"
 PROBE_PATH = MODEL_DIR / "rotation_probe.pkl"
 YUNET_PATH = MODEL_DIR / "face_detection_yunet_2023mar.onnx"
 

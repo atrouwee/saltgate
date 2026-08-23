@@ -3,9 +3,9 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "silbersalz-look"
+name = "open-silbersalz"
 version = "0.1.0"
-description = "Community reverse-engineering of the SILBERSALZ35 film-lab color grade: LUT fitting and batch application for flat scans."
+description = "Open reconstruction of the SILBERSALZ35 film-lab colour grade: LUTs, batch grading and pair-fitting tools for flat scans."
 readme = "README.md"
 license = { text = "MIT" }
 requires-python = ">=3.9"
@@ -18,11 +18,22 @@ dependencies = [
     "tifffile",
 ]
 
+[project.optional-dependencies]
+rotate = ["torch", "torchvision"]          # content-based auto-rotation (ResNet probe)
+fit = ["scikit-learn", "torch", "open_clip_torch"]   # situation classifier / CLIP suggestions for labeling
+dev = ["pytest"]
+
+[project.urls]
+Homepage = "https://github.com/adriaantrouwee/open-silbersalz"
+
 [project.scripts]
 sslook = "silbersalz_look.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+silbersalz_look = ["models/*.onnx", "models/*.pkl"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
