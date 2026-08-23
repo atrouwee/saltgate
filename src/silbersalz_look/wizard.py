@@ -122,14 +122,22 @@ def ensure_rotation_deps() -> bool:
     say(f"{YELLOW}Orientation needs two extra libraries (about 200 MB, one-time download).{RESET}")
     if not yes("Download them now?", default=True):
         return False
-    uv = subprocess.run(["which", "uv"], capture_output=True, text=True).stdout.strip()
-    cmd = ([uv, "tool", "install", "--force", "saltgate[rotate] @ git+https://github.com/atrouwee/saltgate.git"] if uv
-           else [sys.executable, "-m", "pip", "install", "--quiet", "torch", "torchvision"])
+    # Install INTO the environment we are running in (never reinstall the tool itself).
+    import shutil
+    uv = shutil.which("uv") or str(Path.home() / ".local/bin/uv")
+    if Path(uv).exists():
+        cmd = [uv, "pip", "install", "--python", sys.executable, "torch", "torchvision"]
+    else:
+        cmd = [sys.executable, "-m", "pip", "install", "--quiet", "torch", "torchvision"]
     say(f"{DIM}Installing… this can take a few minutes.{RESET}")
-    r = subprocess.run(cmd)
+    r = subprocess.run(cmd, capture_output=True, text=True)
     if r.returncode != 0:
+        log_path = write_log("rotation-install", r.stdout + "\n" + r.stderr)
         say(f"{RED}The download didn't work. Continuing without orientation — you can try again later.{RESET}")
+        say(f"{DIM}Details saved to {log_path}{RESET}")
         return False
+    import importlib
+    importlib.invalidate_caches()
     try:
         import torch, torchvision  # noqa: F401
         return True
@@ -138,7 +146,35 @@ def ensure_rotation_deps() -> bool:
         return False
 
 
+def log_dir() -> Path:
+    d = Path.home() / "Library/Logs/saltgate" if sys.platform == "darwin" else Path.home() / ".saltgate/logs"
+    d.mkdir(parents=True, exist_ok=True)
+    return d
+
+
+def write_log(kind: str, text: str) -> Path:
+    from . import __version__
+    p = log_dir() / f"{kind}-{time.strftime('%Y%m%d-%H%M%S')}.log"
+    p.write_text(f"saltgate {__version__} · python {sys.version.split()[0]} · {sys.platform}\n\n{text}")
+    return p
+
+
 def run() -> int:
+    """Entry point with a safety net: never show a traceback, always save one."""
+    try:
+        return _run()
+    except SystemExit:
+        raise
+    except Exception:
+        import traceback
+        log_path = write_log("error", traceback.format_exc())
+        say(f"\n{RED}Something went wrong and I stopped. Nothing of yours was modified.{RESET}")
+        say(f"Details are saved in {log_path} — please attach that file when reporting the problem:")
+        say("https://github.com/atrouwee/saltgate/issues\n")
+        return 1
+
+
+def _run() -> int:
     say(f"\n{BOLD}SALTGATE{RESET} — finish your flat SILBERSALZ scans.")
     say(f"{DIM}The name is a wink. The work is sincere. Your originals are never modified.{RESET}\n")
 

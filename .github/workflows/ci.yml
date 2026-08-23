@@ -1,0 +1,22 @@
+name: build & smoke test
+on:
+  push: { branches: [main] }
+  pull_request:
+jobs:
+  test:
+    strategy:
+      matrix: { os: [macos-latest, ubuntu-latest] }
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - name: install like a user (installer path, from this checkout)
+        run: |
+          uv tool install --python 3.12 "saltgate[dev] @ ."
+          saltgate --help
+      - name: unit tests
+        run: |
+          uv venv --python 3.12 .venv && uv pip install --python .venv/bin/python -e ".[dev]"
+          .venv/bin/python -m pytest -q
+      - name: wizard smoke test (non-interactive, synthetic scans)
+        run: .venv/bin/python scripts/smoke_wizard.py
