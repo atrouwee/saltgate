@@ -8,7 +8,7 @@
   <a href="docs/FINDINGS.md">What we learned</a>
 </p>
 
-<p align="center"><img src="docs/examples/hero_250d_before_after.jpg" width="900" alt="lab flat scan and SALTGATE render, six Vision3 250D frames across daylight, overcast, indoor and tungsten light — provisional 250D LUT"></p>
+<p align="center"><img src="docs/examples/hero_250d_before_after.jpg" width="900" alt="lab flat scan and SALTGATE render, six Vision3 250D frames across daylight, overcast, indoor and tungsten light — proxy 250D LUT"></p>
 
 SALTGATE is an independent community project built with appreciation for what SILBERSALZ brought to still photography: motion-picture film, ECN-2 processing, exceptionally detailed scans, and a distinctive approach to colour.
 
@@ -48,9 +48,9 @@ saltgate
 
 | Label | Meaning |
 |---|---|
-| **Measured** | fitted from genuine flat/graded pairs and evaluated on rolls and donors the fit never saw |
+| **Validated** | fitted from genuine flat/graded pairs and evaluated on rolls and donors the fit never saw |
 | **Beta** | pair-fitted, but from too few rolls or donors for a broad claim |
-| **Provisional** | statistical approximation without pairs — the character, not the grade |
+| **Proxy** | a stand-in without pairs — statistical approximation from the author's graded archive; the character, not the grade |
 | **Experimental** | research result kept for comparison; not recommended for photographs |
 
 Fidelity is stated as the ΔE2000 of the *bare LUT* against the lab's own graded files — what you actually get — under the stated validation. "Close" means close under those conditions, not identical.
@@ -58,12 +58,12 @@ Fidelity is stated as the ΔE2000 of the *bare LUT* against the lab's own graded
 | Stock | LUT | Status | Evidence |
 |---|---|---|---|
 | **Kodak Gold 200** (C-41) | `silbersalz-gold200_v1-paired_33.cube` | **Beta** — 27 pairs, one donor, two rolls (thanks Cody) | leave-one-roll-out median ΔE2000 **4.1** (p90 4.7); 1.4 with an oracle per-frame density/black (upper bound); frame-level on the same rolls 1.7. The roll-to-roll gap is per-roll density the LUT can't know — more rolls and donors will close it |
-| **Vision3 250D** | `silbersalz-250d_v0-statistical_33.cube` | **Provisional** — no pairs yet | matches tone and cast of the author's graded archive; renders skin ~8 L\* lighter and skies ~7 L\* darker than the lab |
+| **Vision3 250D** | `silbersalz-250d_v0-statistical_33.cube` | **Proxy** — no pairs yet | matches tone and cast of the author's graded archive (13 deliveries, ~700 frames: 250D throughout plus two 50D rolls, per the lab's info cards); renders skin ~8 L\* lighter and skies ~7 L\* darker than the lab |
 | Vision3 250D | `silbersalz-250d_v1-bridged_33.cube` | **Experimental** | Gold look + statistical tone bridge; colour cast, not recommended |
-| Vision3 50D / 200T / 500T / 125 Special | borrows `silbersalz-250d_v0-statistical_33.cube` | **Provisional, borrowed** — no pairs for these stocks | same negative family and the same scan encoding as 250D, so the 250D one-light is a fair first pass; their own pairs would replace it. (Gold ↔ Vision3 does *not* transfer — different curves) |
+| Vision3 50D / 200T / 500T / 125 Special | borrows `silbersalz-250d_v0-statistical_33.cube` | **Proxy (250D)** — no pairs for these stocks | same negative family and the same scan encoding as 250D, so the 250D one-light is a fair first pass; their own pairs would replace it. (Gold ↔ Vision3 does *not* transfer — different curves) |
 | other C-41 stocks the lab scanned | — | needs pairs | — |
 
-In the walkthrough these appear in lab terms: **timed** (colour-timed against real pairs), **one-light** (one setting for the roll, from the graded archive), **one-light (250D)** (borrowed).
+The walkthrough shows the same words next to each film: **validated** · **beta** · **proxy** · **proxy (250D)**.
 
 The lab introduced its APOLLON scanner in 2023; all LUTs so far are for **APOLLON-era raw files** (14012 × 10508 px). Earlier deliveries came from a different scanner and will need their own pairs. Full history: [`luts/CHANGELOG.md`](luts/CHANGELOG.md).
 
@@ -74,7 +74,7 @@ SILBERSALZ Film GmbH was founded in 2011 as a commercial film-production company
 
 ## Have flat *and* graded scans of the same frames? Get in touch
 
-Pairs are what turn a provisional LUT into a measured one — especially for the Vision3 stocks. If the lab delivered any of your frames both flat and graded (or you received flats in 2026 and the graded versions arrive later — keep both), please reach out to me, Adriaan: [open an issue](../../issues) or message me in the Silbersalz community group. I'll tell you exactly which files to send; they're used only to fit the transform and never published. **More pairs, less guesswork.**
+Pairs are what turn a proxy LUT into a validated one — especially for the Vision3 stocks. If the lab delivered any of your frames both flat and graded (or you received flats in 2026 and the graded versions arrive later — keep both), please reach out to me, Adriaan: [open an issue](../../issues) or message me in the Silbersalz community group. I'll tell you exactly which files to send; they're used only to fit the transform and never published. **More pairs, less guesswork.**
 
 ## What this is — and isn't
 
@@ -83,7 +83,7 @@ SALTGATE **is**:
 - an independent, open-source colour-reconstruction project;
 - based on measurements from contributor-owned flat/graded deliveries;
 - intended to help finish existing photographs and preserve technical knowledge;
-- explicit about which results are measured, beta, provisional or experimental.
+- explicit about which results are validated, beta, proxy or experimental.
 
 SALTGATE **is not**:
 
