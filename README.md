@@ -79,7 +79,7 @@ sslook report --in FLATDIR --compare GRADEDDIR --out report/
 ## Contributing
 
 - **Most valuable**: donate flat/graded pairs — [docs/DONATING_PAIRS.md](docs/DONATING_PAIRS.md).
-- Method details and math: [docs/METHOD.md](docs/METHOD.md).
+- Method details and math: [docs/METHOD.md](docs/METHOD.md); research log and what we learned: [docs/FINDINGS.md](docs/FINDINGS.md).
 - Issues and PRs welcome — especially per-app LUT installation notes and validation on your own rolls.
 
 ## License
