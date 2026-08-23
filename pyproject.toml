@@ -25,7 +25,7 @@ fit = ["scikit-learn", "torch", "open_clip_torch"]   # situation classifier / CL
 dev = ["pytest"]
 
 [project.urls]
-Homepage = "https://github.com/adriaantrouwee/saltgate"
+Homepage = "https://github.com/atrouwee/saltgate"
 
 [project.scripts]
 sslook = "silbersalz_look.cli:main"
