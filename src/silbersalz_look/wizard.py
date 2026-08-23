@@ -31,6 +31,32 @@ def say(msg: str = "") -> None:
     print(msg, flush=True)
 
 
+def working(msg: str) -> None:
+    """Immediate feedback before anything that takes more than a second."""
+    print(f"{DIM}{msg}{RESET}", flush=True)
+
+
+class Progress:
+    """Single updating line: label  done/total · ~N min left."""
+
+    def __init__(self, label: str, total: int):
+        self.label, self.total, self.t0, self.n = label, total, time.time(), 0
+        self._draw()
+
+    def step(self, n: int = 1) -> None:
+        self.n += n
+        self._draw()
+
+    def _draw(self) -> None:
+        rate = (time.time() - self.t0) / max(self.n, 1)
+        left = rate * (self.total - self.n) if self.n else 0
+        eta = "" if self.n == 0 else (f" · about {max(1, round(left / 60))} min left" if left > 50 else f" · {int(left)} s left")
+        bar = "#" * int(24 * self.n / max(self.total, 1)) + "-" * (24 - int(24 * self.n / max(self.total, 1)))
+        print(f"\r{DIM}{self.label}  [{bar}] {self.n}/{self.total}{eta}   {RESET}", end="", flush=True)
+        if self.n >= self.total:
+            print(flush=True)
+
+
 def ask(prompt: str, default: str | None = None) -> str:
     suffix = f" {DIM}[{default}]{RESET}" if default else ""
     try:
@@ -105,13 +131,15 @@ def detect_stock_from_sidecars(folder: Path) -> str | None:
 
 def looks_flat(files: list[Path]) -> tuple[int, int]:
     """(n_flat_looking, n_checked) via mean saturation of a few previews."""
-    from . import imgio, rebate
+    from . import imgio
     sample = files[:: max(1, len(files) // 6)][:6]
     n_flat = 0
+    prog = Progress("Looking at a few frames", len(sample))
     for f in sample:
         rgb = imgio.read_image(f, max_px=400).rgb
         sat = float((rgb.max(-1) - rgb.min(-1)).mean())
         n_flat += int(sat < 0.08)
+        prog.step()
     return n_flat, len(sample)
 
 
@@ -282,8 +310,8 @@ def _run() -> int:
             say(f"This folder has both raw ({len(raw_named)}) and graded ({len(graded_named)}) files — using the raw ones.")
             files = raw_named
         break
+    say(f"\nFound {BOLD}{len(files)}{RESET} JPG frames.")
     n_flat, n_checked = looks_flat(files)
-    say(f"\nFound {BOLD}{len(files)}{RESET} JPG frames.", )
     if n_flat == 0:
         say(f"{YELLOW}These don't look like flat scans — they already seem graded. The LUT would double-grade them.{RESET}")
         if not yes("Continue anyway?", default=False):
@@ -319,15 +347,15 @@ def _run() -> int:
     if yes("Also put the frames upright automatically? (the lab delivers them in film-strip orientation)", default=True):
         if ensure_rotation_deps():
             from . import orient, rebate
-            say(f"{DIM}Looking at each frame… (~1 s per frame){RESET}")
+            working("Loading the orientation model…")
             frac = rebate.roll_area_fractions(files, cache_dir=None)
             model = orient.OrientationModel()
             rotations = {}
-            for i, f in enumerate(files):
+            prog = Progress("Working out which way is up", len(files))
+            for f in files:
                 area = rebate.crop_to_area(imgio.read_image(f, max_px=900).rgb, frac)
                 rotations[f.name] = {"k": 0, "confidence": 1.0} if rebate.looks_blank(area) else model.predict(area)
-                if (i + 1) % 25 == 0:
-                    say(f"{DIM}  {i + 1}/{len(files)}{RESET}")
+                prog.step()
             low = sum(1 for r in rotations.values() if r.get("confidence", 1) < 0.5)
             say(f"{GREEN}Done.{RESET} {low} frames were hard to judge; check them on the preview and in the result.")
 
@@ -336,10 +364,12 @@ def _run() -> int:
     out_dir.mkdir(exist_ok=True)
     from . import lut as lutmod, rebate, sheet, orient as orient_mod
     lattice = lutmod.read_cube(cube)[0]
+    working("Measuring the frame borders…")
     frac = rebate.roll_area_fractions(files, cache_dir=None)
     picks = [f for f in files[:: max(1, len(files) // 6)][:8]]
     rows = []
-    say(f"\n{DIM}Rendering a preview of 6 frames…{RESET}")
+    say("")
+    prog = Progress("Rendering a preview of 6 frames", min(6, len(picks)))
     for f in picks:
         a = rebate.crop_to_area(imgio.read_image(f, max_px=900).rgb, frac)
         if rebate.looks_blank(a):
@@ -348,8 +378,11 @@ def _run() -> int:
             a = orient_mod.apply_rotation(a, rotations[f.name]["k"])
         r = lutmod.apply_trilinear(lattice, a)
         rows.append({"title": f.name, "tiles": [(a, "flat scan", sheet.COLORS["input"]), (r, f"SALTGATE · {stock} · {status}", sheet.COLORS["lut"])]})
+        prog.step()
         if len(rows) >= 6:
             break
+    while prog.n < prog.total:
+        prog.step()
     preview = out_dir / "preview.jpg"
     sheet.save_sheet(sheet.build_sheet(rows, tile_h=260), preview, quality=85)
     open_file(preview)
@@ -372,13 +405,10 @@ def _run() -> int:
 
     # 5. batch
     from . import apply as ap
-    t0 = time.time()
-    done = [0]
+    prog = Progress("Grading", todo)
     def log(msg: str) -> None:
         if msg.startswith("  ["):
-            done[0] += 1
-            if done[0] % 10 == 0 or done[0] == len(files):
-                say(f"{DIM}  {done[0]}/{len(files)} frames ({time.time() - t0:.0f}s){RESET}")
+            prog.step()
     try:
         ap.grade_folder(folder, out_dir, cube, balance_mode="off", resume=True, rotations=rotations, log=log)
     except Exception as e:  # never show a traceback to this audience
