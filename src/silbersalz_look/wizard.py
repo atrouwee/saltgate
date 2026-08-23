@@ -142,8 +142,10 @@ def ensure_rotation_deps() -> bool:
     importlib.invalidate_caches()
     try:
         import torch, torchvision  # noqa: F401
+        from . import orient
+        orient.OrientationModel()   # fail here, not mid-roll, if anything is missing
         return True
-    except ImportError:
+    except Exception:
         say(f"{YELLOW}Installed, but it needs a restart: run `saltgate` again to use orientation.{RESET}")
         return False
 

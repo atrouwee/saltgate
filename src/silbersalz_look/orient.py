@@ -11,7 +11,6 @@ carries a confidence so uncertain frames can be reviewed on a sheet.
 """
 from __future__ import annotations
 
-import pickle
 from pathlib import Path
 
 import cv2
@@ -19,7 +18,7 @@ import numpy as np
 
 ROOT = Path(__file__).resolve().parents[2]
 MODEL_DIR = Path(__file__).resolve().parent / "models"
-PROBE_PATH = MODEL_DIR / "rotation_probe.pkl"
+PROBE_PATH = MODEL_DIR / "rotation_probe.npz"   # plain numpy weights: no scikit-learn at runtime
 YUNET_PATH = MODEL_DIR / "face_detection_yunet_2023mar.onnx"
 
 
@@ -36,7 +35,10 @@ class OrientationModel:
             transforms.Resize((224, 224)), transforms.ToTensor(),
             transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
         ])
-        self.probe = pickle.loads(PROBE_PATH.read_bytes()) if PROBE_PATH.exists() else None
+        self.probe = None
+        if PROBE_PATH.exists():
+            d = np.load(PROBE_PATH)
+            self.probe = (d["W"], d["b"], d["classes"])
         self.det = None
         if use_faces and YUNET_PATH.exists() and hasattr(cv2, "FaceDetectorYN"):
             self.det = cv2.FaceDetectorYN.create(str(YUNET_PATH), "", (320, 320), score_threshold=0.6)
@@ -72,8 +74,11 @@ class OrientationModel:
         p_probe = np.full(4, 0.25)
         if self.probe is not None:
             # probe was trained on views labeled "rotation needed to fix"; run it on the
-            # unrotated frame: class c = rotate by c to make upright
-            p_probe = self.probe.predict_proba(self.spatial_features([rgb]))[0]
+            # unrotated frame: class c = rotate by c to make upright (softmax over a linear probe)
+            W, b, classes = self.probe
+            z = self.spatial_features([rgb])[0] @ W.T + b
+            z = z - z.max(); pr = np.exp(z) / np.exp(z).sum()
+            p_probe = np.zeros(4); p_probe[classes] = pr
         faces = np.array([self.face_score(v) for v in views])
         face_term = np.zeros(4)
         if faces.max() > 0:
@@ -91,13 +96,14 @@ class OrientationModel:
 
 
 def train_probe(npz_path: Path = ROOT / "cache" / "rot_train_spatial.npz") -> Path:
-    """Fit the rotation probe from cached self-supervised features."""
+    """Fit the rotation probe from cached self-supervised features (training
+    needs scikit-learn; the saved weights are plain numpy)."""
     from sklearn.linear_model import LogisticRegression
 
     d = np.load(npz_path)
     clf = LogisticRegression(max_iter=3000, C=5.0).fit(d["X"], d["y"])
     MODEL_DIR.mkdir(exist_ok=True)
-    PROBE_PATH.write_bytes(pickle.dumps(clf))
+    np.savez(PROBE_PATH, W=clf.coef_.astype(np.float32), b=clf.intercept_.astype(np.float32), classes=clf.classes_.astype(np.int64))
     return PROBE_PATH
 
 
