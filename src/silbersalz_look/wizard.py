@@ -110,6 +110,32 @@ class Wedge:
             print(f"\n  {' ' * COL}{GREY}{sub.ljust(60)}{RESET}\033[F", end="", flush=True)  # write sub-line, move back up
 
 
+import contextlib
+import threading
+
+
+@contextlib.contextmanager
+def busy(label: str):
+    """Transient status line with a density spinner while the main thread works."""
+    stop = threading.Event()
+
+    def spin():
+        i, frames = 0, "░▒▓█▓▒"
+        while not stop.is_set():
+            print(f"\r  {' ' * COL}{AMBER}{frames[i % 6]}{RESET} {GREY}{label}{RESET}   ", end="", flush=True)
+            i += 1
+            stop.wait(0.15)
+        print("\r" + " " * 90 + "\r", end="", flush=True)
+
+    t = threading.Thread(target=spin, daemon=True)
+    t.start()
+    try:
+        yield
+    finally:
+        stop.set()
+        t.join()
+
+
 def spinner_while(proc: subprocess.Popen, label: str) -> None:
     t0, i, frames = time.time(), 0, "░▒▓█▓▒"
     while proc.poll() is None:
@@ -193,10 +219,10 @@ def _vtuple(v: str) -> tuple:
     return tuple(int(x) for x in v.split(".") if x.isdigit())
 
 
-def check_for_update() -> None:
-    """Every run: look for a newer version (2 s, silent offline); with uv, update in place and relaunch."""
+def _fetch_latest() -> str | None:
+    """Newer published version, or None (offline, disabled, up to date)."""
     if os.environ.get("SALTGATE_NO_UPDATE"):
-        return
+        return None
     try:
         import urllib.request
         from . import __version__
@@ -204,9 +230,13 @@ def check_for_update() -> None:
             latest = r.read().decode().split('version = "', 1)[1].split('"', 1)[0]
         latest = os.environ.get("SALTGATE_FAKE_LATEST", latest)   # test hook
     except Exception:
-        return
-    if _vtuple(latest) <= _vtuple(__version__):
-        return
+        return None
+    return latest if _vtuple(latest) > _vtuple(__version__) else None
+
+
+def _apply_update(latest: str) -> None:
+    """With uv, update in place and relaunch; otherwise just say so."""
+    from . import __version__
     uv = _uv()
     if uv is None or not _in_uv_tool():
         note(f"v{latest} is available (you have v{__version__}) · paste the installer line from the README again to update")
@@ -312,7 +342,6 @@ def ensure_rotation_deps() -> bool:
 # ── the walkthrough ───────────────────────────────────────────────────────
 def run() -> int:
     """Entry point with a safety net: never show a traceback, always save one."""
-    quiet_libraries()
     try:
         return _run()
     except KeyboardInterrupt:
@@ -332,13 +361,20 @@ def run() -> int:
 
 
 def _run() -> int:
-    from . import __version__, imgio
+    from . import __version__
     out()
     out(f"  {AMBER}░▒▓█{RESET}  {BOLD}SALTGATE{RESET}{' ' * 44}{GREY}v{__version__}{RESET}")
     out(f"        finish your flat SILBERSALZ scans")
     out(f"        {GREY}the name is a wink · the work is sincere{RESET}")
     out()
-    check_for_update()
+    # the slow part of starting up (loading image libraries, checking for updates) happens
+    # behind a status line so the window is never silent
+    with busy("warming up · checking for updates"):
+        quiet_libraries()
+        from . import imgio  # noqa: F401  (loads numpy / PIL / opencv)
+        latest = _fetch_latest()
+    if latest:
+        _apply_update(latest)
 
     # ◆ scans
     receipt("scans", "drag the folder into this window and press Enter")
