@@ -53,7 +53,7 @@ saltgate
 | **Proxy** | a stand-in without pairs — statistical approximation from the author's graded archive; the character, not the grade |
 | **Experimental** | research result kept for comparison; not recommended for photographs |
 
-Fidelity is stated as the ΔE2000 of the *bare LUT* against the lab's own graded files — what you actually get — under the stated validation. "Close" means close under those conditions, not identical.
+Fidelity is stated as the ΔE2000 of the *bare LUT* against the lab's own graded files — what you actually get — under the stated validation. ΔE2000 is a perceptual colour distance: below 1 is indistinguishable, 2–4 a trained eye sees side by side, above 8 is a different grade. "Close" means close under those conditions, not identical. How the number is measured, and what donated pairs measurably buy: [`docs/DELTA_E.md`](docs/DELTA_E.md).
 
 | Stock | LUT | Status | Evidence |
 |---|---|---|---|
@@ -109,6 +109,6 @@ This project is our way of taking that influence seriously: studying it carefull
 
 ## Independence, privacy, trademark, license
 
-Built by Adriaan Trouwee with the Silbersalz community. Pairs: Cody (Gold 200) — donated images are never published; pair identifiers in the shipped statistics are anonymised. Independent of and unaffiliated with SILBERSALZ Film GmbH; "SILBERSALZ" and "SILBERSALZ35" are the lab's names, used here descriptively. The LUTs contain no image content. Code and LUTs: **MIT**.
+Built by Adriaan Trouwee with the Silbersalz community. Pairs: Cody (Gold 200), Faraz (500T) — donated images are never published; pair identifiers in the shipped statistics are anonymised. Independent of and unaffiliated with SILBERSALZ Film GmbH; "SILBERSALZ" and "SILBERSALZ35" are the lab's names, used here descriptively. The LUTs contain no image content. Code and LUTs: **MIT**.
 
-How it works, what we measured, and the plain-command tools: [docs/METHOD.md](docs/METHOD.md) · [docs/FINDINGS.md](docs/FINDINGS.md) · [docs/TOOLS.md](docs/TOOLS.md). A dated timeline of what happened at the lab, kept separate on purpose: [docs/CONTEXT.md](docs/CONTEXT.md).
+How it works, what we measured, and the plain-command tools: [docs/METHOD.md](docs/METHOD.md) · [docs/FINDINGS.md](docs/FINDINGS.md) · [docs/DELTA_E.md](docs/DELTA_E.md) · [docs/TOOLS.md](docs/TOOLS.md). A dated timeline of what happened at the lab, kept separate on purpose: [docs/CONTEXT.md](docs/CONTEXT.md).
