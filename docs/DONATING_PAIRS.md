@@ -2,6 +2,10 @@
 
 The paired fit (the real reverse-engineering) needs examples of the **same frame** delivered by SILBERSALZ35 both **flat (ungraded)** and **graded**. Roughly 10 pairs per film stock give a solid LUT; even 1–2 pairs help.
 
+## Got flat scans in 2026 and graded ones later?
+
+Several customers received their 2026 rolls as flat scans first, with graded versions promised to follow. If both arrive, you hold exactly what this project needs — the same frames raw *and* graded, from the same scan. Keep both deliveries as downloaded and get in touch.
+
 ## What makes a valid pair
 
 - Both files must come **straight from the lab** — original downloads, not re-exports.
