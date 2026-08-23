@@ -18,7 +18,6 @@ from pathlib import Path
 # ── palette ────────────────────────────────────────────────────────────────
 AMBER, GREY, RED, BOLD, RESET = "\033[38;5;214m", "\033[38;5;245m", "\033[38;5;203m", "\033[1m", "\033[0m"
 COL = 12  # receipt label column width
-CIRCLED = "①②③④⑤⑥⑦⑧⑨"
 
 # stock -> (LUT file, status, one-line honesty)
 LUTS = {
@@ -27,9 +26,25 @@ LUTS = {
     "gold200": ("silbersalz-gold200_v1-paired_33.cube", "BETA",
                 "fitted from 27 real flat/graded pairs (one donor, two rolls). close to the lab on its own rolls; other rolls may want a small exposure nudge."),
 }
-STOCK_CHOICES = [("250d", "Vision3 250D"), ("gold200", "Kodak Gold 200"), ("50d", "Vision3 50D"),
-                 ("200t", "Vision3 200T"), ("500t", "Vision3 500T"), ("125special", "125 Special"),
+STOCK_CHOICES = [("250d", "Vision3 250D"), ("50d", "Vision3 50D"), ("200t", "Vision3 200T"),
+                 ("500t", "Vision3 500T"), ("gold200", "Kodak Gold 200"), ("125special", "125 Special"),
                  ("other", "something else / I don't know")]
+# plain-words readiness per stock, derived from LUTS: matched (real pairs) · estimated (archive only) · waiting
+READINESS = {"PROVISIONAL": "estimated", "BETA": "matched", "MEASURED": "matched"}
+READINESS_LEGEND = ("matched = fitted on real flat + graded pairs from the lab · "
+                    "estimated = no pairs yet, approximated from ~700 graded lab scans\n"
+                    "waiting = nothing to build from yet · more pairs, less guesswork")
+
+
+def ask_stock() -> str:
+    receipt("film", "which film was this roll?")
+    return options(STOCK_CHOICES, tags={k: readiness(k) for k, _ in STOCK_CHOICES}, legend=READINESS_LEGEND)
+
+
+def readiness(stock: str) -> str | None:
+    if stock == "other":
+        return None
+    return READINESS.get(LUTS[stock][1], "estimated") if stock in LUTS else "waiting"
 LAB_STOCK_CODES = {"XXX": "250d"}   # codes seen in the lab's *_Exported.json; extend as we learn them
 SECONDS_PER_FRAME = 25              # rough; used for the time estimate only
 
@@ -68,12 +83,24 @@ def yes(default: bool = True) -> bool:
     return default if not ans else ans.startswith("y")
 
 
-def options(items: list[tuple[str, str]], per_row: int = 3, default_idx: int = 0) -> str:
-    """Render ①②③ in columns under the current receipt line; return the chosen key."""
-    width = max(len(lbl) for _, lbl in items) + 3
+def options(items: list[tuple[str, str]], per_row: int = 3, default_idx: int = 0,
+            tags: dict[str, str | None] | None = None, legend: str | None = None) -> str:
+    """Render [1] [2] [3] in columns under the current receipt line; return the chosen key.
+
+    tags: optional grey word after each label (readiness); legend: grey line under the list.
+    """
+    tags = tags or {}
+    plain = {k: f"{lbl}{' · ' + tags[k] if tags.get(k) else ''}" for k, lbl in items}
+    width = max(len(v) for v in plain.values()) + 3
     for i in range(0, len(items), per_row):
-        row = "".join(f"{AMBER}{CIRCLED[j]}{RESET} {lbl.ljust(width)}" for j, (_, lbl) in enumerate(items[i:i + per_row], start=i))
-        out(f"  {' ' * COL}{row.rstrip()}")
+        cells = []
+        for j, (key, lbl) in enumerate(items[i:i + per_row], start=i):
+            tag = f"{GREY} · {tags[key]}{RESET}" if tags.get(key) else ""
+            pad = " " * (width - len(plain[key]))
+            cells.append(f"{AMBER}[{j + 1}]{RESET} {lbl}{tag}{pad}")
+        out(f"  {' ' * COL}{''.join(cells).rstrip()}")
+    if legend:
+        note(legend)
     while True:
         ans = prompt(str(default_idx + 1))
         if ans.isdigit() and 1 <= int(ans) <= len(items):
@@ -426,13 +453,11 @@ def _run() -> int:
         receipt("film", f"the lab's sidecar says {dict(STOCK_CHOICES).get(detected, detected)} — is that right?")
         stock = detected if yes(True) else None
         if stock is None:
-            receipt("film", "which film was this roll?")
-            stock = options(STOCK_CHOICES)
+            stock = ask_stock()
     else:
-        receipt("film", "which film was this roll?")
-        stock = options(STOCK_CHOICES)
+        stock = ask_stock()
     if stock not in LUTS:
-        receipt("film", "there is no LUT for this stock yet", "warn")
+        receipt("film", "this film is still waiting — there is no LUT for it yet", "warn")
         note("it needs real flat + graded pairs of the same frames. if you have any, please get in touch:\nhttps://github.com/atrouwee/saltgate  ·  more pairs, less guesswork")
         out()
         return 0
