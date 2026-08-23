@@ -214,7 +214,11 @@ def _cmd_validate_pair(args) -> int:
 
 
 def main(argv=None) -> int:
-    ap = argparse.ArgumentParser(prog="saltgate", description="Silbersalz look tools")
+    argv = sys.argv[1:] if argv is None else argv
+    if not argv or argv == ["wizard"]:
+        from . import wizard
+        return wizard.run()
+    ap = argparse.ArgumentParser(prog="saltgate", description="SALTGATE tools (run with no arguments for the guided walkthrough)")
     sub = ap.add_subparsers(dest="cmd", required=True)
 
     p = sub.add_parser("fit-statistical", help="fit v0 LUT by distribution matching")
