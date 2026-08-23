@@ -33,7 +33,7 @@ Honest labels. *Paired* LUTs are fitted on real raw/graded pairs of the same fra
 
 | Stock | LUT | Status | Fidelity |
 |---|---|---|---|
-| **Kodak Gold 200** (C-41) | `silbersalz-gold200_v1-paired_33.cube` | **Paired, beta** — 27 pairs, one donor, two rolls (thanks Cody) | leave-one-roll-out median ΔE2000 **{{GOLD_BARE}}** (bare LUT), p90 {{GOLD_P90}}; {{GOLD_ORACLE}} with an oracle per-frame density/black (upper bound). Close to the lab's files; more donors needed before calling it final |
+| **Kodak Gold 200** (C-41) | `silbersalz-gold200_v1-paired_33.cube` | **Paired, beta** — 27 pairs, one donor, two rolls (thanks Cody) | leave-one-roll-out median ΔE2000 **4.1** (bare LUT), p90 4.7; 1.4 with an oracle per-frame density/black (upper bound). Frame-level (same rolls) 1.7. Close to the lab's files on its own rolls; the roll-to-roll gap is per-roll density the LUT can't know — more rolls/donors needed |
 | **Vision3 250D** | `silbersalz-250d_v0-statistical_33.cube` | Provisional — no pairs yet | matches tone and cast; renders skin ~8 L\* lighter and skies ~7 L\* darker than the lab |
 | Vision3 250D | `silbersalz-250d_v1-bridged_33.cube` | Experimental — Gold look + statistical bridge | not recommended (colour cast) |
 | Vision3 50D / 200T / 500T / 125 Special | — | **needs pairs** | — |
