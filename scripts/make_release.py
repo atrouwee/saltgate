@@ -1,4 +1,4 @@
-"""Build release/open-silbersalz-luts-<version>.zip: all paired/provisional
+"""Build release/saltgate-luts-<version>.zip: all paired/provisional
 LUTs, HaldCLUT PNGs, the usage guide and changelog."""
 import shutil, sys, zipfile
 from pathlib import Path
@@ -6,7 +6,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 from silbersalz_look import lut, __version__
 
 root = Path(__file__).resolve().parents[1]; out = root / "release"; out.mkdir(exist_ok=True)
-stage = out / f"open-silbersalz-luts-{__version__}"; shutil.rmtree(stage, ignore_errors=True); stage.mkdir()
+stage = out / f"saltgate-luts-{__version__}"; shutil.rmtree(stage, ignore_errors=True); stage.mkdir()
 for cube in sorted((root / "luts").glob("*.cube")):
     if "bridged" in cube.name or "structured" in cube.name:   # experimental, not shipped
         continue

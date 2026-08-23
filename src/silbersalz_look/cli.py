@@ -214,7 +214,7 @@ def _cmd_validate_pair(args) -> int:
 
 
 def main(argv=None) -> int:
-    ap = argparse.ArgumentParser(prog="sslook", description="Silbersalz look tools")
+    ap = argparse.ArgumentParser(prog="saltgate", description="Silbersalz look tools")
     sub = ap.add_subparsers(dest="cmd", required=True)
 
     p = sub.add_parser("fit-statistical", help="fit v0 LUT by distribution matching")
