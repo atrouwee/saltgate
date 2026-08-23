@@ -60,8 +60,10 @@ Fidelity is stated as the ΔE2000 of the *bare LUT* against the lab's own graded
 | **Kodak Gold 200** (C-41) | `silbersalz-gold200_v1-paired_33.cube` | **Beta** — 27 pairs, one donor, two rolls (thanks Cody) | leave-one-roll-out median ΔE2000 **4.1** (p90 4.7); 1.4 with an oracle per-frame density/black (upper bound); frame-level on the same rolls 1.7. The roll-to-roll gap is per-roll density the LUT can't know — more rolls and donors will close it |
 | **Vision3 250D** | `silbersalz-250d_v0-statistical_33.cube` | **Provisional** — no pairs yet | matches tone and cast of the author's graded archive; renders skin ~8 L\* lighter and skies ~7 L\* darker than the lab |
 | Vision3 250D | `silbersalz-250d_v1-bridged_33.cube` | **Experimental** | Gold look + statistical tone bridge; colour cast, not recommended |
-| Vision3 50D / 200T / 500T / 125 Special | — | **needs pairs** | — |
+| Vision3 50D / 200T / 500T / 125 Special | borrows `silbersalz-250d_v0-statistical_33.cube` | **Provisional, borrowed** — no pairs for these stocks | same negative family and the same scan encoding as 250D, so the 250D one-light is a fair first pass; their own pairs would replace it. (Gold ↔ Vision3 does *not* transfer — different curves) |
 | other C-41 stocks the lab scanned | — | needs pairs | — |
+
+In the walkthrough these appear in lab terms: **timed** (colour-timed against real pairs), **one-light** (one setting for the roll, from the graded archive), **one-light (250D)** (borrowed).
 
 The lab introduced its APOLLON scanner in 2023; all LUTs so far are for **APOLLON-era raw files** (14012 × 10508 px). Earlier deliveries came from a different scanner and will need their own pairs. Full history: [`luts/CHANGELOG.md`](luts/CHANGELOG.md).
 
