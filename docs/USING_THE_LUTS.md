@@ -4,6 +4,15 @@ Every LUT here expects the **untouched flat scan** from the lab (the `…_RAW_CO
 
 Pick the LUT for your **film stock** (see the coverage table in the README). A LUT for another stock will look wrong — the lab's raw files differ per stock.
 
+## Which files do I have?
+
+- `…_HIGH_RAW_COLOR.jpg` (or a delivery simply called *raw* / *flat*): the ungraded scan — **this is the LUT's input.**
+- `…_HIGH.jpg`, `….jxl`, `….jp2`: the lab's **graded** deliveries (full-res "HIGH"/"FULL", or the 4K gallery version). Nothing to apply; but if you have a graded *and* a raw file of the same frame, you hold a pair — see the donation guide.
+- `.dng` straight from the scanner: a different, earlier stage of the pipeline; the LUTs don't apply to it. Please open an issue with a sample so we can look.
+
+## Capture One
+Recent versions import `.cube` files as Styles: Adjustments → Styles and Presets → ⋯ → *Import LUT…* (menu wording varies by version). Apply on the untouched flat. Capture One applies the LUT inside its own working space, so expect a very slight difference from the reference renders in this repo.
+
 ## DaVinci Resolve (free)
 1. Download the `.cube` → Project Settings → Color Management → *Open LUT Folder* → drop it there → *Update Lists*.
 2. Import your flat JPGs into the media pool; on the clip, Color page → LUTs panel → right-click the LUT → *Apply LUT to Current Node*.
@@ -14,9 +23,6 @@ Layer → New Adjustment Layer → **Color Lookup** → *3DLUT File* → *Load 3
 
 ## Affinity Photo
 Adjustments → **LUT** → *Load LUT* → choose the `.cube`.
-
-## Capture One
-Recent versions import `.cube` files as Styles: Adjustments → Styles and Presets → ⋯ → *Import LUT…* (menu wording varies by version). Apply on the untouched flat. Capture One applies the LUT inside its own working space, so expect a very slight difference from the reference renders in this repo.
 
 ## Lightroom Classic / Lightroom / Camera Raw
 Lightroom cannot load `.cube` directly; it needs a **profile** (`.xmp`) with the LUT embedded. Create it once in Adobe Camera Raw (Photoshop):

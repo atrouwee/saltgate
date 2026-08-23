@@ -20,7 +20,7 @@ This project rebuilds the grade in the open: standard `.cube` LUTs you can drop 
 
 1. **Find your stock** in the table below and download its `.cube` from [`luts/`](luts/) (or the latest [release](../../releases)).
 2. **Apply it to the untouched flat scan** — the lab's `…_RAW_COLOR.jpg` / raw delivery, before any adjustment of your own. The LUT expects exactly that file (Display P3 tagged) and outputs the look in Display P3.
-3. Follow the two-line recipe for your app in **[docs/USING_THE_LUTS.md](docs/USING_THE_LUTS.md)** — Resolve, Photoshop, Affinity, Capture One, Lightroom (via a Camera Raw profile), darktable, RawTherapee.
+3. Follow the two-line recipe for your app in **[docs/USING_THE_LUTS.md](docs/USING_THE_LUTS.md)** — Capture One, DaVinci Resolve, Photoshop, Affinity, Lightroom (via a Camera Raw profile), darktable, RawTherapee.
 4. Nudge exposure ±0.1–0.2 stop to taste. The lab also set a per-roll density and a per-frame black point; the batch tool reproduces those, a LUT in a host app does not.
 
 > **Rotation:** the lab's raw scans are delivered in film-strip orientation. The LUT doesn't care; if you want whole rolls upright automatically, see the batch tool below.
@@ -46,7 +46,7 @@ SILBERSALZ Film GmbH was founded in 2011 as a commercial film-production company
 
 ## Help: we need Vision3 pairs
 
-One thing turns a provisional LUT into a real one: **frames the lab delivered both raw and graded**. Five to ten frames of a stock are enough for a first LUT; a mix of light (sun, shade, tungsten, flash, under/over-exposed) and some people in them help most. The graded `.jxl` beats the `.jpg` if you have it.
+One thing turns a provisional LUT into a real one: **frames the lab delivered both raw and graded**. If you received flat scans in 2026 and the lab later sends the graded versions of the same roll, **keep both** — that's a perfect pair set. Five to ten frames of a stock are enough for a first LUT; a mix of light (sun, shade, tungsten, flash, under/over-exposed) and some people in them help most. The graded `.jxl` beats the `.jpg` if you have it.
 
 **[How to donate pairs →](docs/DONATING_PAIRS.md)** (what to send, how it's used, privacy — images are used only to fit the transform and are never published.)
 
