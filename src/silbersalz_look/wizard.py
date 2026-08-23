@@ -29,11 +29,15 @@ LUTS = {
 STOCK_CHOICES = [("250d", "Vision3 250D"), ("50d", "Vision3 50D"), ("200t", "Vision3 200T"),
                  ("500t", "Vision3 500T"), ("gold200", "Kodak Gold 200"), ("125special", "125 Special"),
                  ("other", "something else / I don't know")]
-# plain-words readiness per stock, derived from LUTS: matched (real pairs) · estimated (archive only) · waiting
-READINESS = {"PROVISIONAL": "estimated", "BETA": "matched", "MEASURED": "matched"}
-READINESS_LEGEND = ("matched = fitted on real flat + graded pairs from the lab · "
-                    "estimated = no pairs yet, approximated from ~700 graded lab scans\n"
-                    "waiting = nothing to build from yet · more pairs, less guesswork")
+# lab terms for readiness, derived from LUTS: timed (fitted on real pairs) · one-light (one setting for the
+# roll, from the graded archive). Vision3 stocks without their own pairs borrow the 250D one-light: same
+# negative family, same scan encoding. Gold (C-41) is a different curve and never borrows.
+READINESS = {"PROVISIONAL": "one-light", "BETA": "timed", "MEASURED": "timed"}
+BORROWS = {"50d": "250d", "200t": "250d", "500t": "250d", "125special": "250d", "other": "250d"}
+READINESS_LEGEND = ("timed = colour-timed against real flat + graded pairs from the lab · "
+                    "one-light = no pairs yet, one setting for the roll from ~700 graded lab scans\n"
+                    "one-light (250D) = no pairs for this stock, borrows the 250D setting (same Vision3 family) · "
+                    "more pairs, less guesswork")
 
 
 def ask_stock() -> str:
@@ -42,9 +46,11 @@ def ask_stock() -> str:
 
 
 def readiness(stock: str) -> str | None:
+    if stock in LUTS:
+        return READINESS.get(LUTS[stock][1], "one-light")
     if stock == "other":
         return None
-    return READINESS.get(LUTS[stock][1], "estimated") if stock in LUTS else "waiting"
+    return f"{readiness(BORROWS[stock])} (250D)"
 LAB_STOCK_CODES = {"XXX": "250d"}   # codes seen in the lab's *_Exported.json; extend as we learn them
 SECONDS_PER_FRAME = 25              # rough; used for the time estimate only
 
@@ -456,16 +462,20 @@ def _run() -> int:
             stock = ask_stock()
     else:
         stock = ask_stock()
+    borrowed = None
     if stock not in LUTS:
-        receipt("film", "this film is still waiting — there is no LUT for it yet", "warn")
-        note("it needs real flat + graded pairs of the same frames. if you have any, please get in touch:\nhttps://github.com/atrouwee/saltgate  ·  more pairs, less guesswork")
-        out()
-        return 0
+        borrowed, stock = stock, BORROWS[stock]
     cube_name, status, honesty = LUTS[stock]
     cube = lut_dir() / cube_name
     if not cube.exists():
         raise FileNotFoundError(str(cube))
     receipt("film", f"{cube_name.split('_')[0]} · {AMBER}{status}{RESET}")
+    if borrowed == "other":
+        note("most Silbersalz rolls were Vision3, so this starts from the 250D one-light setting.")
+    elif borrowed:
+        note(f"no {dict(STOCK_CHOICES)[borrowed]} pairs yet — borrowing the 250D one-light setting. same Vision3 family, same scan encoding,\n"
+             "so it is a fair first pass; real pairs of this stock would replace it. if you have any, please get in touch:\n"
+             "https://github.com/atrouwee/saltgate")
     note(honesty)
     out()
 
@@ -575,7 +585,7 @@ def _run() -> int:
             keep_awake.terminate()
     if rotations:
         (out_dir / "rotations.json").write_text(json.dumps(rotations, indent=1))
-    (out_dir / "saltgate.json").write_text(json.dumps({"source": str(folder), "lut": str(cube), "stock": stock, "rotated": bool(rotations)}, indent=1))
+    (out_dir / "saltgate.json").write_text(json.dumps({"source": str(folder), "lut": str(cube), "stock": stock, "film": borrowed or stock, "rotated": bool(rotations)}, indent=1))
 
     # ◆ done
     remaining = len([f for f in files if not (out_dir / f.name).exists()])
