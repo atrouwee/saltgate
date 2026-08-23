@@ -21,8 +21,10 @@ COL = 12  # receipt label column width
 
 # stock -> (LUT file, status, one-line honesty)
 LUTS = {
-    "250d": ("silbersalz-250d_v0-statistical_33.cube", "PROXY",
-             "a statistical approximation — close in tone, skin a little light, skies a little dark. real 250D pairs will replace it."),
+    "250d": ("silbersalz-250d_v0.1-statistical_33.cube", "PROXY",
+             "a statistical stand-in from ~700 graded 250D frames — close in tone, skin a little light, skies a little dark. real 250D pairs will replace it."),
+    "50d": ("silbersalz-50d_v0-statistical_33.cube", "PROXY",
+            "a thin statistical stand-in from ~100 graded 50D frames (three rolls). same caveats as 250D, less data behind it. real 50D pairs will replace it."),
     "gold200": ("silbersalz-gold200_v1-paired_33.cube", "BETA",
                 "fitted from 27 real flat/graded pairs (one donor, two rolls). close to the lab on its own rolls; other rolls may want a small exposure nudge."),
 }
@@ -34,7 +36,7 @@ STOCK_CHOICES = [("250d", "Vision3 250D"), ("50d", "Vision3 50D"), ("200t", "Vis
 # without their own LUT borrow the 250D proxy: same negative family, same scan encoding. Gold (C-41) is a
 # different curve and never borrows.
 READINESS = {"PROXY": "proxy", "BETA": "beta", "VALIDATED": "validated"}
-BORROWS = {"50d": "250d", "200t": "250d", "500t": "250d", "125special": "250d", "other": "250d"}
+BORROWS = {"200t": "250d", "500t": "250d", "125special": "250d", "other": "250d"}
 READINESS_LEGEND = ("validated = fitted on real flat + graded pairs and checked on rolls it never saw · "
                     "beta = fitted on real pairs, one donor so far\n"
                     "proxy = no pairs yet, a stand-in estimated from the author's ~700 graded lab scans · "
