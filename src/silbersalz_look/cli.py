@@ -218,6 +218,9 @@ def main(argv=None) -> int:
     if not argv or argv == ["wizard"]:
         from . import wizard
         return wizard.run()
+    if argv[0] == "fix-rotation":
+        from . import wizard
+        return wizard.fix_rotation(argv[1:])
     ap = argparse.ArgumentParser(prog="saltgate", description="SALTGATE tools (run with no arguments for the guided walkthrough)")
     sub = ap.add_subparsers(dest="cmd", required=True)
 
