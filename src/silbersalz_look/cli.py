@@ -34,6 +34,12 @@ def _cmd_fit_statistical(args) -> int:
     return 0
 
 
+def _cmd_donor_report(args) -> int:
+    from . import donor_report
+    print(donor_report.run(Path(args.donor_dir), args.stock))
+    return 0
+
+
 def _archive_spec(spec: str) -> tuple[str, list[Path]]:
     """'DIR' or 'DIR:glob|glob' -> (label, files). The globs match file names and let one
     delivery folder be split by stock (e.g. 'Silbersalz35_2024-Aug-1:07[4-9]_*|0[89]?_*|1??_*'
@@ -107,12 +113,13 @@ def _cmd_fit_pairs(args) -> int:
         print("no pairs found (expect pairs/<donor>/<name>/{flat.*,graded.*})")
         return 1
     print(f"[pairs] discovered {len(pairs)}")
+    if args.stock != "all":   # filter by declared stock BEFORE the expensive alignment
+        pairs = [p for p in pairs if p.stock in (args.stock, "unknown")]
+        print(f"[pairs] {len(pairs)} declared {args.stock} (or unknown)")
     for p in pairs:
         fp.prepare_pair(p)
 
     live = [p for p in pairs if p.excluded is None]
-    if args.stock != "all":
-        live = [p for p in live if p.stock in (args.stock, "unknown")]
     if args.era != "auto":
         live = [p for p in live if p.era == args.era]
     if not live:
@@ -309,6 +316,11 @@ def main(argv=None) -> int:
     p = sub.add_parser("validate-pair", help="QA one donated pair directory")
     p.add_argument("pair_dir")
     p.set_defaults(fn=_cmd_validate_pair)
+
+    p = sub.add_parser("donor-report", help="coverage of a donor's pairs + what to ask for next (writes pairs/<donor>/REPORT.md)")
+    p.add_argument("donor_dir")
+    p.add_argument("--stock", default=None)
+    p.set_defaults(fn=_cmd_donor_report)
 
     args = ap.parse_args(argv)
     return args.fn(args)

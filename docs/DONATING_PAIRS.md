@@ -49,6 +49,7 @@ pairs/
 ```yaml
 donor: your-name
 stock: 250D            # 50D | 200T | 250D | 500T | 125special | gold200 | portra400 | ... (any tag)
+use: true             # set false to keep a pair on disk but leave it out of fits (blank frames, test shots)
 era: apollon14k        # apollon14k (Sep 2022 onward, ~14K raw files) | classic (earlier scanner, 5900 × 3800) — omit if unsure, we auto-detect
 delivery_date: 2024-08
 illuminant: flash        # daylight | overcast-shade | golden-lowsun | tungsten | flash | fluorescent | mixed
@@ -63,6 +64,7 @@ If you run the tooling yourself:
 
 ```bash
 sslook validate-pair pairs/<you>/<pair-name>/
+sslook donor-report pairs/<you>/          # coverage report: which light, materials and reference colours your pairs teach, and what would help most next
 ```
 
 This aligns the two files, verifies they really are the same frame (correlation gate), and reports the sample count and detected cohort. Otherwise just send the files — we run the same check on intake.
