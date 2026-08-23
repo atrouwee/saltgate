@@ -10,7 +10,11 @@ if ! command -v uv >/dev/null 2>&1; then
 fi
 export PATH="$HOME/.local/bin:$PATH"
 echo "Installing saltgate…"
-uv tool install --force --python 3.12 "saltgate @ git+https://github.com/atrouwee/saltgate.git"
+if [ "${SALTGATE_ROTATE:-}" = "1" ]; then
+  uv tool install --force --python 3.12 --with torch --with torchvision "saltgate @ git+https://github.com/atrouwee/saltgate.git"
+else
+  uv tool install --force --python 3.12 "saltgate @ git+https://github.com/atrouwee/saltgate.git"
+fi
 uv tool update-shell >/dev/null 2>&1 || true
 echo
 echo "Done. Open a NEW terminal window and type:   saltgate"
