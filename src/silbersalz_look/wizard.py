@@ -159,8 +159,22 @@ def ensure_rotation_deps() -> bool:
         cmd = [uv, "pip", "install", "--python", sys.executable, "torch", "torchvision"]
     else:
         cmd = [sys.executable, "-m", "pip", "install", "--quiet", "torch", "torchvision"]
-    say(f"{DIM}Installing… this can take a few minutes.{RESET}")
-    r = subprocess.run(cmd, capture_output=True, text=True)
+    say(f"{DIM}Installing… this can take a few minutes (about 200 MB).{RESET}")
+    import threading
+    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    t0 = time.time()
+    spinner = "|/-\\"
+    i = 0
+    while proc.poll() is None:
+        print(f"\r{DIM}  {spinner[i % 4]} downloading and installing… {int(time.time() - t0)} s{RESET}   ", end="", flush=True)
+        i += 1
+        time.sleep(0.5)
+    print("\r" + " " * 60 + "\r", end="", flush=True)
+    out = proc.stdout.read() if proc.stdout else ""
+
+    class _R:  # minimal stand-in for subprocess.run's result
+        returncode = proc.returncode; stdout = out; stderr = ""
+    r = _R()
     if r.returncode != 0:
         log_path = write_log("rotation-install", r.stdout + "\n" + r.stderr)
         say(f"{RED}The download didn't work. Continuing without orientation — you can try again later.{RESET}")
@@ -191,8 +205,22 @@ def write_log(kind: str, text: str) -> Path:
     return p
 
 
+def quiet_libraries() -> None:
+    """Library chatter (OpenCV '[ WARN ]', torch/numpy UserWarnings) is noise for this audience."""
+    import warnings
+    warnings.filterwarnings("ignore")
+    os.environ.setdefault("OPENCV_LOG_LEVEL", "ERROR")
+    os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
+    try:
+        import cv2
+        cv2.utils.logging.setLogLevel(cv2.utils.logging.LOG_LEVEL_ERROR)
+    except Exception:
+        pass
+
+
 def run() -> int:
     """Entry point with a safety net: never show a traceback, always save one."""
+    quiet_libraries()
     try:
         return _run()
     except KeyboardInterrupt:
