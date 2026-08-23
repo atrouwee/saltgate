@@ -8,7 +8,7 @@
   <a href="docs/FINDINGS.md">What we learned</a>
 </p>
 
-<p align="center"><img src="docs/examples/hero_250d_before_after.jpg" width="900" alt="lab flat scan (left) and open-silbersalz render (right), three frames of Vision3 250D"></p>
+<p align="center"><img src="docs/examples/hero_250d_before_after.jpg" width="900" alt="lab flat scan and open-silbersalz render, six Vision3 250D frames across daylight, overcast, indoor and tungsten light"></p>
 
 [SILBERSALZ35](https://silbersalz35.com/) sold Kodak Vision3 cine film for stills, developed it in ECN-2, scanned it and applied a much-loved cinematic grade. The lab has closed. Many of us received our last rolls as **flat ("raw") scans only** — the graded versions will never come.
 
