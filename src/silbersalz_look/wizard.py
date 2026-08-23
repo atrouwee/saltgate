@@ -481,8 +481,8 @@ def _run() -> int:
     elif borrowed:
         base_name = dict(STOCK_CHOICES)[stock]
         if borrowed == "125special":
-            note(f"no 125T pairs yet — borrowing the {base_name} LUT: also tungsten-balanced, but 125T 'Edition Vivid' is reportedly a Fuji Eterna\n"
-                 "stock, not Vision3, so expect a larger difference than between two Kodak stocks. real 125T pairs would replace it:\n"
+            note(f"no 125T pairs yet — borrowing the {base_name} LUT: also tungsten-balanced, but 125T 'Edition Vivid' is a Fuji stock,\n"
+                 "not Vision3, so expect a larger difference than between two Kodak stocks. real 125T pairs would replace it:\n"
                  "https://github.com/atrouwee/saltgate")
         else:
             note(f"no {dict(STOCK_CHOICES)[borrowed]} pairs yet — borrowing the {base_name} LUT: same balance family, same scan encoding,\n"
