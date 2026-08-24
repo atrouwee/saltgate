@@ -57,8 +57,8 @@ Fidelity is stated as the ΔE2000 of the *bare LUT* against the lab's own graded
 
 | Stock | LUT | Status | Evidence |
 |---|---|---|---|
-| **Kodak Gold 200** (C-41) | `silbersalz-gold200_v1-paired_33.cube` | **Beta** — 27 pairs, one donor, two rolls (thanks Cody) | held out a whole roll at a time: median ΔE2000 **4.1** (p90 4.7); within a roll it reaches 1.7. The roll-to-roll gap is per-roll density the LUT can't know — more rolls and donors will close it |
-| **Vision3 500T** | `silbersalz-500t_v1-paired_33.cube` | **Beta** — 5 pairs, one donor, one roll (thanks Faraz) | frame-level holdout median ΔE2000 **1.7** (p90 6.4; one frame where the lab lifted black by ~0.04); training residual ≤1.1 in every band; black point within 0.1 L\*. Needs a second roll to become *validated* |
+| **Kodak Gold 200** (C-41) | `silbersalz-gold200_v1-paired_33.cube` | **Beta** — 27 pairs, one donor, two rolls (thanks Cody) | held out a whole roll at a time: median ΔE2000 **4.1** (p90 4.7). The roll-to-roll gap is per-roll density the LUT can't know — more rolls and donors will close it |
+| **Vision3 500T** | `silbersalz-500t_v1.1-paired_33.cube` | **Beta** — 5 pairs, one donor, one roll (thanks Faraz) | frame-level holdout median ΔE2000 **1.5** (p90 6.1; one frame where the lab lifted black by ~0.04); training residual ≤1.1 in every band; black point within 0.1 L\*. Needs a second roll to become *validated* |
 | **Vision3 250D** | `silbersalz-250d_v0.1-statistical_33.cube` | **Proxy** — no pairs yet | matches tone and cast of the author's graded APOLLON-era 250D archive (16 rolls, ~650 frames, stock per the lab's own filenames and info cards); renders skin ~8 L\* lighter and skies ~7 L\* darker than the lab |
 | Vision3 250D | `silbersalz-250d_v1-bridged_33.cube` | **Experimental** | Gold look + statistical tone bridge; colour cast, not recommended |
 | **Vision3 50D** | `silbersalz-50d_v0-statistical_33.cube` | **Proxy** — no pairs, thin | same method as 250D on the author's three graded 50D rolls (~100 frames); the source distribution is the 250D flat roll, since no 50D flats exist |

@@ -25,8 +25,8 @@ LUTS = {
              "a statistical stand-in from ~700 graded 250D frames — close in tone, skin a little light, skies a little dark. real 250D pairs will replace it."),
     "50d": ("silbersalz-50d_v0-statistical_33.cube", "PROXY",
             "a thin statistical stand-in from ~100 graded 50D frames (three rolls). same caveats as 250D, less data behind it. real 50D pairs will replace it."),
-    "500t": ("silbersalz-500t_v1-paired_33.cube", "BETA",
-             "fitted from 5 real flat/graded pairs (one donor, one roll). held-out frames within ΔE 1.7 of the lab; a second roll is needed before it can be called validated."),
+    "500t": ("silbersalz-500t_v1.1-paired_33.cube", "BETA",
+             "fitted from 5 real flat/graded pairs (one donor, one roll). held-out frames within ΔE 1.5 of the lab; a second roll is needed before it can be called validated."),
     "gold200": ("silbersalz-gold200_v1-paired_33.cube", "BETA",
                 "fitted from 27 real flat/graded pairs (one donor, two rolls). close to the lab on its own rolls; other rolls may want a small exposure nudge."),
 }
