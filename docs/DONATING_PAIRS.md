@@ -58,17 +58,16 @@ skin: faces-skin         # faces-skin | no-skin
 notes: anything relevant (push/pull, special instructions, ...)
 ```
 
-## Validating before you send
+## What happens when they arrive
 
-If you run the tooling yourself:
+Every pair goes through the same intake check: the two files are aligned, verified to really be the same frame, and scored for how much usable colour they contribute. You get that back as a short report — which lighting conditions and materials your frames cover, and what would help most next.
 
-```bash
-sslook validate-pair pairs/<you>/<pair-name>/
-sslook donor-report pairs/<you>/          # coverage report: which light, materials and reference colours your pairs teach, and what would help most next
-```
-
-This aligns the two files, verifies they really are the same frame (correlation gate), and reports the sample count and detected cohort. Otherwise just send the files — we run the same check on intake.
+Nothing to run yourself. Send the files as the lab delivered them.
 
 ## Privacy
 
-Donated images are used **only** to fit the color transform. They are never committed to the repository, never republished, and never shared onward. The published LUTs contain no recoverable image content — only the color mapping. Fit reports credit donors by the name they choose (or stay anonymous — say so in `meta.yaml`).
+Donated images are used **only** to fit the colour transform. They never appear in this repository, are never published, and are never shared onward with anyone.
+
+The originals are kept privately, on the author's own storage, for one reason: when the method improves the fits get re-run from the original files, so a LUT you helped build keeps getting better without you having to send anything again. Ask at any time and your files are deleted.
+
+The published LUTs contain no recoverable image content — only the colour mapping — and the statistics shipped alongside them are anonymised. Fit reports credit donors by the name they choose (or stay anonymous — say so in `meta.yaml`).

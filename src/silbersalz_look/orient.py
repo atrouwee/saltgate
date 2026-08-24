@@ -99,16 +99,8 @@ class OrientationModel:
         }
 
 
-def train_probe(npz_path: Path = ROOT / "cache" / "rot_train_spatial.npz") -> Path:
-    """Fit the rotation probe from cached self-supervised features (training
-    needs scikit-learn; the saved weights are plain numpy)."""
-    from sklearn.linear_model import LogisticRegression
-
-    d = np.load(npz_path)
-    clf = LogisticRegression(max_iter=3000, C=5.0).fit(d["X"], d["y"])
-    MODEL_DIR.mkdir(exist_ok=True)
-    np.savez(PROBE_PATH, W=clf.coef_.astype(np.float32), b=clf.intercept_.astype(np.float32), classes=clf.classes_.astype(np.int64))
-    return PROBE_PATH
+# train_probe() lives in scripts/train_orient_probe.py (research-only: it needs
+# scikit-learn). Runtime inference below is numpy + OpenCV only, by design.
 
 
 def apply_rotation(arr: np.ndarray, k: int) -> np.ndarray:
