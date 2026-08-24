@@ -5,7 +5,7 @@
   <a href="#finish-your-scans">Finish your scans</a> ·
   <a href="#which-films-and-how-close">Which films, how close</a> ·
   <a href="#have-flat-and-graded-scans-of-the-same-frames-get-in-touch">Have pairs? Get in touch</a> ·
-  <a href="docs/FINDINGS.md">What we learned</a>
+  <a href="docs/HOW_IT_WORKS.md">How it works</a>
 </p>
 
 <p align="center"><img src="docs/examples/hero_250d_before_after.jpg" width="900" alt="lab flat scan and SALTGATE render, six Vision3 250D frames across daylight, overcast, indoor and tungsten light — proxy 250D LUT"></p>
@@ -57,7 +57,7 @@ Fidelity is stated as the ΔE2000 of the *bare LUT* against the lab's own graded
 
 | Stock | LUT | Status | Evidence |
 |---|---|---|---|
-| **Kodak Gold 200** (C-41) | `silbersalz-gold200_v1-paired_33.cube` | **Beta** — 27 pairs, one donor, two rolls (thanks Cody) | leave-one-roll-out median ΔE2000 **4.1** (p90 4.7); 1.4 with an oracle per-frame density/black (upper bound); frame-level on the same rolls 1.7. The roll-to-roll gap is per-roll density the LUT can't know — more rolls and donors will close it |
+| **Kodak Gold 200** (C-41) | `silbersalz-gold200_v1-paired_33.cube` | **Beta** — 27 pairs, one donor, two rolls (thanks Cody) | held out a whole roll at a time: median ΔE2000 **4.1** (p90 4.7); within a roll it reaches 1.7. The roll-to-roll gap is per-roll density the LUT can't know — more rolls and donors will close it |
 | **Vision3 500T** | `silbersalz-500t_v1-paired_33.cube` | **Beta** — 5 pairs, one donor, one roll (thanks Faraz) | frame-level holdout median ΔE2000 **1.7** (p90 6.4; one frame where the lab lifted black by ~0.04); training residual ≤1.1 in every band; black point within 0.1 L\*. Needs a second roll to become *validated* |
 | **Vision3 250D** | `silbersalz-250d_v0.1-statistical_33.cube` | **Proxy** — no pairs yet | matches tone and cast of the author's graded APOLLON-era 250D archive (16 rolls, ~650 frames, stock per the lab's own filenames and info cards); renders skin ~8 L\* lighter and skies ~7 L\* darker than the lab |
 | Vision3 250D | `silbersalz-250d_v1-bridged_33.cube` | **Experimental** | Gold look + statistical tone bridge; colour cast, not recommended |
@@ -112,4 +112,4 @@ This project is our way of taking that influence seriously: studying it carefull
 
 Built by Adriaan Trouwee with the Silbersalz community. Pairs: Cody (Gold 200), Faraz (500T) — donated images are never published; pair identifiers in the shipped statistics are anonymised. Independent of and unaffiliated with SILBERSALZ Film GmbH; "SILBERSALZ" and "SILBERSALZ35" are the lab's names, used here descriptively. The LUTs contain no image content. Code and LUTs: **MIT**.
 
-How it works, what we measured, and the plain-command tools: [docs/METHOD.md](docs/METHOD.md) · [docs/FINDINGS.md](docs/FINDINGS.md) · [docs/DELTA_E.md](docs/DELTA_E.md) · [docs/TOOLS.md](docs/TOOLS.md). A dated timeline of what happened at the lab, kept separate on purpose: [docs/CONTEXT.md](docs/CONTEXT.md).
+How it works: [docs/HOW_IT_WORKS.md](docs/HOW_IT_WORKS.md) · how close the results are, and what donated pairs measurably buy: [docs/DELTA_E.md](docs/DELTA_E.md) · using the LUTs in your own editor: [docs/USING_THE_LUTS.md](docs/USING_THE_LUTS.md). A dated timeline of what happened at the lab, and what its deliveries looked like era by era, kept separate on purpose: [docs/CONTEXT.md](docs/CONTEXT.md).

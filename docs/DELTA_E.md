@@ -22,7 +22,7 @@ For each donated pair we have the lab's graded file and our render of the same f
 
 Numbers are always for the **bare LUT**, applied as-is, with no per-frame correction — what you actually get. Where we quote a held-out number, the frame (or the whole roll) was excluded from the fit that is being scored, so the number is a prediction, not a memory.
 
-**Caveat.** ΔE is a per-pixel colour distance. It does not weigh *where* the error is — a ΔE of 3 on a face matters more than 3 in a shadow — which is why the benchmark also reports per material (skin, sky, foliage, neutrals; [`docs/FINDINGS.md`](FINDINGS.md)) and why a visual judgement sheet stays in the loop.
+**Caveat.** ΔE is a per-pixel colour distance. It does not weigh *where* the error is — a ΔE of 3 on a face matters more than 3 in a shadow — which is why results are also checked per material (skin, sky, foliage, neutrals) and by eye against real lab frames of the same kind of scene.
 
 ## What pairs buy — measured
 

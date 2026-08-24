@@ -2,6 +2,16 @@
 cache/
 pairs/
 report/
+# ...but keep the measured NUMBERS in version control (private repo only):
+# results are the record. Imagery stays out - donated frames are never
+# committed to any repository, public or private, and judgement sheets carry
+# the author's own photographs.
+!report/
+report/**
+!report/**/
+!report/**/*.json
+!report/**/*.md
+!report/**/*.csv
 out/
 __pycache__/
 *.pyc
