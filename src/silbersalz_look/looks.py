@@ -5,14 +5,11 @@ crushed-shadow fit, a colour cast) is not a choice and is not listed; those stay
 in the project's research record.
 
 Where a second entry exists it is there for a REASON that is not "it might be
-better". On 250D the two entries genuinely disagree, and the disagreement is
-real rather than a fitting artefact: measured on the lab's own graded output,
-its rendition of the pair-donor's roll runs ~6 b* warmer and ~10 L* brighter
-than its rendition of the author's archive. The pair fit reproduces a true
-flat→graded measurement; the proxy reproduces the distribution of one specific
-archive. Neither is wrong, and no measurement available today settles which a
-given photographer's roll resembles — so the walkthrough renders both on their
-own frames and asks.
+better". On 250D the two entries render about 10 b* apart on identical frames,
+and we cannot say which is right: the pair fit reproduces a measured flat→graded
+transform, the proxy reproduces the distribution of one archive, and comparing
+them needs flat/graded pairs from the roll in question. So the walkthrough
+renders both on the photographer's own frames and asks.
 
 Deliberately free of heavy imports: `cli.py` reads this on every invocation and
 must not pay for scipy to print --help.
@@ -36,13 +33,13 @@ LOOKS: dict[str, list[Look]] = {
     "250d": [
         Look("proxy", "archive-matched", "silbersalz-250d_v0.1-statistical_33.cube", "PROXY",
              "estimated from ~700 of the author's own lab-graded 250D frames rather than measured "
-             "from pairs. it is the safer default: on his rolls it sits within ~1 b* of what the lab "
-             "actually returned, where the pair-fitted LUT sits about 10 b* warmer."),
+             "from pairs. the conservative default: it is what this tool has always shipped, and on "
+             "the author's own rolls it reads closer than the pair fit does."),
         Look("paired", "pair-fitted", "silbersalz-250d_v2-paired_33.cube", "BETA",
              "fitted from 22 real flat/graded pairs, two photographers. against true flat→graded "
-             "ground truth it is by far the closer of the two — but 16 of those 22 pairs are one "
-             "photographer's roll, and the lab's own grade of that roll runs ~6 b* warmer and ~10 L* "
-             "brighter than its grade of the author's. try it; it may suit your rolls better."),
+             "ground truth it is by far the closer of the two — the only place we can actually check. "
+             "but 16 of the 22 pairs are a single roll, and it renders warmer than the proxy. which "
+             "is right for YOUR roll is not something we can measure without pairs of your own."),
     ],
     "50d": [
         Look("proxy", "proxy", "silbersalz-50d_v0-statistical_33.cube", "PROXY",
