@@ -4,6 +4,22 @@ Every LUT here expects the **untouched flat scan** from the lab (the `…_RAW_CO
 
 Pick the LUT for your **film stock** (see the coverage table in the README). A LUT for another stock will look wrong — the lab's raw files differ per stock.
 
+## More than one look per stock
+
+Some stocks ship two LUTs. That is not indecision — it is what the evidence supports. On 250D the pair-fitted LUT is measurably closer to the lab indoors and under tungsten, and renders cooler and greener in open daylight, because every donated pair behind it was shot indoors. The flat scan gives the tool no way to tell those cases apart, so the choice is yours.
+
+The guided walkthrough (`saltgate` with no arguments) renders each candidate on six of your own frames, side by side, and asks before it writes anything. Your answer is remembered on your machine and is never sent anywhere.
+
+From the command line:
+
+```bash
+saltgate looks                                        # what exists, per stock
+saltgate apply --look 250d:paired --in ~/scans/roll12 # pick one
+saltgate apply --lut path/to/any.cube --in ~/scans/roll12
+```
+
+In a host app, the file names carry it: `…_v0.1-statistical_…` is the 250D proxy, `…_v1-paired_…` the pair-fitted alternative.
+
 ## Which files do I have?
 
 - `…_HIGH_RAW_COLOR.jpg` (or a delivery simply called *raw* / *flat*): the ungraded scan — **this is the LUT's input.**
@@ -41,7 +57,7 @@ RawTherapee uses **HaldCLUT** PNGs: `sslook export-hald LUT.cube` writes one; pu
 ## Command line (any OS, batch, with auto-rotation)
 ```bash
 pipx install saltgate              # or: pip install saltgate
-sslook apply --lut silbersalz-gold200_v1-paired_33.cube --in ~/scans/roll12
+sslook apply --look gold200:v1 --in ~/scans/roll12
 ```
 Output goes to a sibling folder `Graded_<version>/`, ICC and EXIF preserved (JPEG q95, 4:4:4; 16-bit output is on the roadmap). Add `--rotations rotations.json` after running `scripts/auto_rotate.py` for content-based upright orientation.
 

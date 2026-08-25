@@ -11,7 +11,7 @@ import pytest
 from silbersalz_look import cli
 
 
-RUNTIME_COMMANDS = {"apply", "export-hald"}
+RUNTIME_COMMANDS = {"apply", "export-hald", "looks"}
 RESEARCH_COMMANDS = {
     "fit-statistical", "fit-structured", "fit-adapter", "fit-pairs",
     "report", "validate-pair", "donor-report",

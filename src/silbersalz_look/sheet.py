@@ -77,5 +77,7 @@ def build_sheet(rows: list[dict], tile_h: int = 300, pad: int = 8, caption_h: in
     return sheet
 
 
-# caption colours by tile role
-COLORS = {"input": (90, 90, 90), "lut": (40, 110, 170), "lab": (40, 140, 80), "ours": (150, 90, 30)}
+# caption colours by tile role. "alt" marks a non-default LUT in a side-by-side
+# preview, so the default stays visually the one being recommended.
+COLORS = {"input": (90, 90, 90), "lut": (40, 110, 170), "lab": (40, 140, 80),
+          "ours": (150, 90, 30), "alt": (120, 65, 135)}

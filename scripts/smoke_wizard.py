@@ -1,6 +1,10 @@
 """Smoke test of the guided walkthrough on synthetic 'flat scans' — no real photos needed.
-Creates 4 milky JPGs with a bright rebate, pipes answers (folder, stock 1, no rotation, yes), checks output."""
-import os, subprocess, sys, tempfile
+Creates 4 milky JPGs with a bright rebate, pipes answers (folder, stock 1, no rotation,
+look 1, yes), checks output.
+
+HOME points into the temp dir: the walkthrough remembers the chosen look, and a smoke
+test must not rewrite the preference of whoever happens to run it."""
+import json, os, subprocess, sys, tempfile
 from pathlib import Path
 import numpy as np
 from PIL import Image
@@ -13,12 +17,17 @@ for i in range(4):
     inner = 0.55 + 0.25 * rng.random((h - 60, w - 60, 3)).astype(np.float32)  # milky flat content
     inner = np.clip(inner + rng.normal(0, 0.01, inner.shape), 0, 1); img[30:-30, 30:-30] = inner
     Image.fromarray((img * 255).astype(np.uint8)).save(scans / f"26.00_000_00000G_{i+1:04d}-0004.jpg", quality=92)
-answers = f"{scans}\n1\nn\ny\n"
-env = dict(os.environ, PYTHONPATH=str(Path(__file__).resolve().parents[1] / "src"), SALTGATE_NO_OPEN="1", SALTGATE_NO_UPDATE="1")
+answers = f"{scans}\n1\nn\n1\ny\n"   # folder · 250D · no rotation · first look · grade
+env = dict(os.environ, PYTHONPATH=str(Path(__file__).resolve().parents[1] / "src"),
+           SALTGATE_NO_OPEN="1", SALTGATE_NO_UPDATE="1", HOME=str(tmp))
 r = subprocess.run([sys.executable, "-c", "from silbersalz_look.cli import main; raise SystemExit(main([]))"],
                    input=answers, capture_output=True, text=True, env=env, timeout=600)
 out = tmp / "01_XXX_saltgate"
-ok = r.returncode == 0 and out.exists() and len(list(out.glob("26.*.jpg"))) == 4 and (out / "preview.jpg").exists()
+state = out / "saltgate.json"
+ok = (r.returncode == 0 and out.exists() and len(list(out.glob("26.*.jpg"))) == 4
+      and (out / "preview.jpg").exists()
+      # 250D ships two looks; the step that offers them must be reachable and recorded
+      and state.exists() and "look" in json.loads(state.read_text()))
 print(r.stdout[-1500:]); print(r.stderr[-800:])
 print("SMOKE", "OK" if ok else "FAILED")
 sys.exit(0 if ok else 1)

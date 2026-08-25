@@ -51,7 +51,6 @@ saltgate
 | **Validated** | fitted from genuine flat/graded pairs and evaluated on rolls and donors the fit never saw |
 | **Beta** | pair-fitted, but from too few rolls or donors for a broad claim |
 | **Proxy** | a stand-in without pairs — statistical approximation from the author's graded archive; the character, not the grade |
-| **Experimental** | research result kept for comparison; not recommended for photographs |
 
 Fidelity is stated as the ΔE2000 of the *bare LUT* against the lab's own graded files — what you actually get — under the stated validation. ΔE2000 is a perceptual colour distance: below 1 is indistinguishable, 2–4 a trained eye sees side by side, above 8 is a different grade. "Close" means close under those conditions, not identical. How the number is measured, and what donated pairs measurably buy: [`docs/DELTA_E.md`](docs/DELTA_E.md).
 
@@ -60,13 +59,15 @@ Fidelity is stated as the ΔE2000 of the *bare LUT* against the lab's own graded
 | **Kodak Gold 200** (C-41) | `silbersalz-gold200_v1-paired_33.cube` | **Beta** — 27 pairs, one donor, two rolls (thanks Cody) | held out a whole roll at a time: median ΔE2000 **4.1** (p90 4.7). The roll-to-roll gap is per-roll density the LUT can't know — more rolls and donors will close it |
 | **Vision3 500T** | `silbersalz-500t_v1.1-paired_33.cube` | **Beta** — 5 pairs, one donor, one roll (thanks Faraz) | frame-level holdout median ΔE2000 **1.5** (p90 6.1; one frame where the lab lifted black by ~0.04); training residual ≤1.1 in every band; black point within 0.1 L\*. Needs a second roll to become *validated* |
 | **Vision3 250D** | `silbersalz-250d_v0.1-statistical_33.cube` | **Proxy** — no pairs yet | matches tone and cast of the author's graded APOLLON-era 250D archive (16 rolls, ~650 frames, stock per the lab's own filenames and info cards); renders skin ~8 L\* lighter and skies ~7 L\* darker than the lab |
-| Vision3 250D | `silbersalz-250d_v1-bridged_33.cube` | **Experimental** | Gold look + statistical tone bridge; colour cast, not recommended |
+| Vision3 250D — second look | `silbersalz-250d_v1-paired_33.cube` | **Beta** — 6 pairs, one donor, three rolls (thanks Sebastian) | held out a whole roll at a time: median ΔE2000 **3.7** (p90 7.7), against **8.1** for the proxy on the same held-out pixels. But all six pairs were shot indoors, and in open daylight this renders cooler and greener than the proxy. Offered as a choice, not a replacement — the walkthrough shows both on your own frames |
 | **Vision3 50D** | `silbersalz-50d_v0-statistical_33.cube` | **Proxy** — no pairs, thin | same method as 250D on the author's three graded 50D rolls (~100 frames); the source distribution is the 250D flat roll, since no 50D flats exist |
-| Vision3 200T | borrows `silbersalz-500t_v1-paired_33.cube` | **Beta (500T)** — no 200T pairs | same tungsten-balanced family; borrowed within the family. Measured: the two daylight stocks' renders sit 3.3 ΔE apart, daylight vs tungsten 23 ΔE — so borrow within the family, never across. Own pairs would replace it |
-| 125T Special ("Edition Vivid") | borrows `silbersalz-500t_v1-paired_33.cube` | **Beta (500T)** — no 125T pairs | tungsten-balanced, a Fuji stock rather than Vision3 (the lab's own wording: "the Fuji 125T"; [review](https://phillipreeve.net/blog/analogue-adventures-part-36-silbersalz35-125t-edition-vivid/)) — so the 500T LUT is the nearest family we have, with a larger expected deviation. (Gold ↔ Vision3 does *not* transfer — different curves) |
+| Vision3 200T | borrows `silbersalz-500t_v1.1-paired_33.cube` | **Beta (500T)** — no 200T pairs | same tungsten-balanced family; borrowed within the family. Measured: the two daylight stocks' renders sit 3.3 ΔE apart, daylight vs tungsten 23 ΔE — so borrow within the family, never across. Own pairs would replace it |
+| 125T Special ("Edition Vivid") | borrows `silbersalz-500t_v1.1-paired_33.cube` | **Beta (500T)** — no 125T pairs | tungsten-balanced, a Fuji stock rather than Vision3 (the lab's own wording: "the Fuji 125T"; [review](https://phillipreeve.net/blog/analogue-adventures-part-36-silbersalz35-125t-edition-vivid/)) — so the 500T LUT is the nearest family we have, with a larger expected deviation. (Gold ↔ Vision3 does *not* transfer — different curves) |
 | other C-41 stocks the lab scanned | — | needs pairs | — |
 
 The walkthrough shows the same words next to each film: **validated** · **beta** · **proxy** · **proxy (250D)**.
+
+Where a stock has more than one credible LUT, there is no single right answer and the tool does not pretend otherwise: the walkthrough renders each one on six of *your* frames, side by side, and asks which you prefer before writing anything. Your choice is remembered locally and never leaves your machine. On the command line, `saltgate looks` lists them and `saltgate apply --look 250d:paired` picks one.
 
 The lab's APOLLON scanner reached customers in September 2022; all LUTs so far are for **APOLLON-era raw files** (≈14000 px wide). Earlier deliveries (5900 × 3800 px, "classic" scanner) came from a different scanner and will need their own pairs. Full history: [`luts/CHANGELOG.md`](luts/CHANGELOG.md).
 
@@ -109,6 +110,8 @@ SALTGATE would not exist without the work of the people who created SILBERSALZ35
 This project is our way of taking that influence seriously: studying it carefully, crediting its source, and helping the resulting photographs survive an uncertain moment.
 
 ## Independence, privacy, trademark, license
+
+Auto-rotation uses a ResNet-50 backbone from torchvision (BSD-3-Clause, trained on ImageNet-1K) and the YuNet face detector from OpenCV Zoo — provenance and licences in [`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md).
 
 Built by Adriaan Trouwee with the Silbersalz community. Pairs: Cody (Gold 200), Faraz (500T) — donated images are never published; pair identifiers in the shipped statistics are anonymised. Independent of and unaffiliated with SILBERSALZ Film GmbH; "SILBERSALZ" and "SILBERSALZ35" are the lab's names, used here descriptively. The LUTs contain no image content. Code and LUTs: **MIT**.
 
