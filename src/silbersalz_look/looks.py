@@ -5,9 +5,14 @@ crushed-shadow fit, a colour cast) is not a choice and is not listed; those stay
 in the project's research record.
 
 Where a second entry exists it is there for a REASON that is not "it might be
-better". 250D keeps the old statistical proxy so a project begun on it can be
-finished on it — the walkthrough renders both on the photographer's own frames
-and lets them choose, and says plainly which one the measurements favour.
+better". On 250D the two entries genuinely disagree, and the disagreement is
+real rather than a fitting artefact: measured on the lab's own graded output,
+its rendition of the pair-donor's roll runs ~6 b* warmer and ~10 L* brighter
+than its rendition of the author's archive. The pair fit reproduces a true
+flat→graded measurement; the proxy reproduces the distribution of one specific
+archive. Neither is wrong, and no measurement available today settles which a
+given photographer's roll resembles — so the walkthrough renders both on their
+own frames and asks.
 
 Deliberately free of heavy imports: `cli.py` reads this on every invocation and
 must not pay for scipy to print --help.
@@ -29,17 +34,15 @@ class Look(NamedTuple):
 # First entry per stock is the default. Order is what the menu shows.
 LOOKS: dict[str, list[Look]] = {
     "250d": [
+        Look("proxy", "archive-matched", "silbersalz-250d_v0.1-statistical_33.cube", "PROXY",
+             "estimated from ~700 of the author's own lab-graded 250D frames rather than measured "
+             "from pairs. it is the safer default: on his rolls it sits within ~1 b* of what the lab "
+             "actually returned, where the pair-fitted LUT sits about 10 b* warmer."),
         Look("paired", "pair-fitted", "silbersalz-250d_v2-paired_33.cube", "BETA",
-             "fitted from 22 real flat/graded pairs — two photographers, four rolls, daylight "
-             "through tungsten. on the donated frames it lands within ~2 ΔE of the lab once each "
-             "frame gets its own exposure, which is the limit an 8-bit scan can even measure."),
-        Look("proxy", "v0.1 · the old stand-in", "silbersalz-250d_v0.1-statistical_33.cube", "PROXY",
-             "what saltgate shipped before any real 250D pairs existed — estimated from ~700 graded "
-             "frames rather than measured. kept so a project started on it can be finished on it; "
-             "it is not the better LUT."),
-        # v1-paired is gone: fitted on six indoor/warm pairs, visibly cyan-green in
-        # daylight, and v2 supersedes it on the same donor's frames. Old release
-        # zips still carry it for anyone re-grading an older project.
+             "fitted from 22 real flat/graded pairs, two photographers. against true flat→graded "
+             "ground truth it is by far the closer of the two — but 16 of those 22 pairs are one "
+             "photographer's roll, and the lab's own grade of that roll runs ~6 b* warmer and ~10 L* "
+             "brighter than its grade of the author's. try it; it may suit your rolls better."),
     ],
     "50d": [
         Look("proxy", "proxy", "silbersalz-50d_v0-statistical_33.cube", "PROXY",
