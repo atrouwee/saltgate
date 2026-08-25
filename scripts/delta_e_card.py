@@ -7,10 +7,12 @@ Usage: python scripts/delta_e_card.py [out.png]
 from __future__ import annotations
 
 import sys
+import json
 from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFont
 
+ROOT = Path(__file__).resolve().parents[1]
 W, H = 1200, 1800  # 2:3 portrait
 
 BG = (13, 13, 13)
@@ -113,10 +115,18 @@ def main():
     y += 44
 
     # ── table ────────────────────────────────────────────────────────────
+    def held(cube, kind="by_frame"):
+        j = json.loads((ROOT / "luts" / cube).read_text())["holdout_median_dE2000"]
+        s = j.get(kind, {}).get("_summary")
+        return f"{s['bare_lut']['median']:.1f}" if s else "—"
+
+    G, T, D = ("silbersalz-gold200_v1-paired_33.stats.json",
+               "silbersalz-500t_v1.1-paired_33.stats.json",
+               "silbersalz-250d_v2-paired_33.stats.json")
     rows = [
-        ("kodak gold 200", "1.7", "· within roll", "4.1 across rolls", "27 pairs · 2 rolls", True),
-        ("vision3 500t", "1.7", "", "one roll so far", "5 pairs · 1 roll", True),
-        ("vision3 250d", "—", "", "no pairs yet", "668 graded frames (proxy)", False),
+        ("kodak gold 200", held(G), "· within roll", f"{held(G,'by_roll')} across rolls", "27 pairs · 2 rolls", True),
+        ("vision3 500t", held(T), "", "one roll so far", "5 pairs · 1 roll", True),
+        ("vision3 250d", held(D), "", f"{held(D,'by_roll')} across rolls · 2 donors", "22 pairs · 4 rolls · 2 photographers", True),
         ("vision3 50d", "—", "", "no pairs yet", "102 graded frames (proxy)", False),
         ("200t · 125t", "—", "", "borrows 500t", "no pairs of their own yet", False),
     ]
@@ -142,7 +152,9 @@ def main():
     # ── footer / ask ─────────────────────────────────────────────────────
     d.text((M_X, y), "what closes the gap:", font=footer_b, fill=AMBER)
     y += 48
-    ask = "2 rolls, 3+ flat + graded pairs each, untouched lab files. that's the whole recipe — new rolls beat new frames."
+    ask = ("2 rolls, 3+ flat + graded pairs each, untouched lab files — new rolls beat new frames. "
+           "and the 16-bit jp2/jxl if your delivery has them: the 8-bit gallery jpeg costs 2.2 ΔE on its own, "
+           "which is now bigger than the error we are trying to measure.")
     for line in wrap(d, ask, footer, W - 2 * M_X):
         d.text((M_X, y), line, font=footer, fill=FG)
         y += 40
