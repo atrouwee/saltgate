@@ -52,6 +52,10 @@ def readiness(stock: str) -> str | None:
         return None
     base = BORROWS[stock]
     return f"{readiness(base)} ({dict(STOCK_CHOICES)[base].split()[-1]})"
+# What the walkthrough grades is imgio.GRADEABLE_EXTS -- one definition, shared
+# with apply.grade_folder. This used to be .jpg only here, so a 16-bit RAW_COLOR
+# .jxl (which the lab genuinely delivers) could not be loaded, and the empty-folder
+# branch told the user that .jxl/.jp2 are the GRADED files. Both were wrong.
 LAB_STOCK_CODES = {"XXX": "250d"}   # codes seen in the lab's *_Exported.json; extend as we learn them
 SECONDS_PER_FRAME = 25              # rough; used for the time estimate only
 
@@ -650,26 +654,28 @@ def _run() -> int:
             note("that's a single file — drag the whole folder that contains your scans"); continue
         if not folder.is_dir():
             note("I can't find a folder there — try dragging it from Finder"); continue
+        gradeable = lambda d: [f for f in imgio.list_images(d) if f.suffix.lower() in imgio.GRADEABLE_EXTS]
         with step(f"looking through {folder.name}"):
-            files = [f for f in imgio.list_images(folder) if f.suffix.lower() in (".jpg", ".jpeg")]
+            files = gradeable(folder)
         if not files:
             with step("looking in the folders inside it"):
                 subs = [d for d in sorted(folder.iterdir()) if d.is_dir() and not d.name.startswith(".")
-                        and any(f.suffix.lower() in (".jpg", ".jpeg") for f in imgio.list_images(d))]
+                        and gradeable(d)]
             if subs:
-                note("no JPGs directly in that folder, but these folders inside it have some — which one holds the flat scans?")
-                choice = options([(str(d), f"{d.name} ({len([f for f in imgio.list_images(d) if f.suffix.lower() in ('.jpg', '.jpeg')])})") for d in subs], per_row=2)
+                note("no scans directly in that folder, but these folders inside it have some — which one holds the flat scans?")
+                choice = options([(str(d), f"{d.name} ({len(gradeable(d))})") for d in subs], per_row=2)
                 folder = Path(choice)
                 with step(f"looking through {folder.name}"):
-                    files = [f for f in imgio.list_images(folder) if f.suffix.lower() in (".jpg", ".jpeg")]
+                    files = gradeable(folder)
             else:
-                if any(f.suffix.lower() in (".jxl", ".jp2") for f in imgio.list_images(folder)):
-                    note("this folder holds the lab's 16-bit .jxl/.jp2 files — those are the GRADED deliveries.\nthe LUT is for the raw JPG scans (usually named …_RAW_COLOR.jpg)")
-                else:
-                    note("no JPG files in that folder — the LUTs work on the lab's JPG 'raw colour' scans")
+                note("no scans in that folder — the LUTs work on the lab's 'raw colour' files\n"
+                     "(jpg, or the 16-bit jxl / jp2 if your delivery has them)")
                 continue
+        # flat vs graded is decided by the name where the lab gives one, and by the
+        # milky look of a flat scan below where it does not -- never by extension
         raw_named = [f for f in files if "RAW" in f.name.upper()]
-        graded_named = [f for f in files if f.name.upper().endswith("_HIGH.JPG") and "RAW" not in f.name.upper()]
+        graded_named = [f for f in files if "RAW" not in f.name.upper()
+                        and (f.stem.upper().endswith("_HIGH") or f.stem.upper().endswith("_FULL"))]
         if raw_named and graded_named:
             note(f"both raw ({len(raw_named)}) and graded ({len(graded_named)}) files here — using the raw ones")
             files = raw_named
@@ -678,10 +684,13 @@ def _run() -> int:
     with step("checking whether these are flat scans"):
         w = Wedge(len(sample))
         n_flat = 0
+        depths = []
         for f in sample:
-            rgb = imgio.read_image(f, max_px=400).rgb
-            n_flat += int(float((rgb.max(-1) - rgb.min(-1)).mean()) < 0.08)
+            got = imgio.read_image(f, max_px=400)
+            depths.append(got.bit_depth)
+            n_flat += int(float((got.rgb.max(-1) - got.rgb.min(-1)).mean()) < 0.08)
             w.step()
+    src_bits = max(depths) if depths else 8
     if n_flat == 0:
         receipt("scans", f"{len(files)} frames · these look GRADED already — the LUT would double-grade them", "warn")
         note("continue anyway?")
@@ -768,9 +777,11 @@ def _run() -> int:
     out()
 
     # ◆ preview
-    from . import lut as lutmod, sheet, orient as orient_mod
+    from . import balance as balmod, lut as lutmod, sheet, orient as orient_mod
+    import numpy as np
     with step(f"loading the look{'s' if len(candidates) > 1 else ''}"):
         lattices = [lutmod.read_cube(looksmod.cube_path(c))[0] for c in candidates]
+    lattice_of = lambda lk: lattices[[c.key for c in candidates].index(lk.key)]
     roll_geometry()
     picks = files[:: max(1, len(files) // 6)][:8]
     receipt("preview", "rendering six frames" + (f" · {len(candidates)} versions" if len(candidates) > 1 else ""))
@@ -818,12 +829,65 @@ def _run() -> int:
         note("remembered for next time")
         out()
 
+    # ◆ format — only asked when the input carries more than 8 bits.
+    # Writing 8-bit out of a 16-bit scan re-imposes the same 2.2 dE the lab's own
+    # gallery jpeg costs, which is larger than the colour error still left in the
+    # LUT, so 16-bit is the default when 16-bit came in.
+    bits = 8
+    if src_bits >= 16:
+        bits = 16
+        receipt("format", f"these are {src_bits}-bit scans — keeping 16-bit out")
+        note("a jpeg would throw away most of that depth. keep 16-bit TIFF? (files are ~10x larger)")
+        if not yes(True):
+            bits = 8
+            note("writing 8-bit JPEG instead")
+        else:
+            note("16-bit TIFF, Display P3, one file per frame")
+        out()
+
+    # ◆ density — optional, and skipped by a single Enter.
+    # Measured worth: the bare LUT sits at dE 5.65 against the lab, and 2.0-2.4
+    # once each roll gets its own density. It is the largest remaining difference
+    # and the one thing a colour transform structurally cannot carry, so it is
+    # offered -- but never forced, because most people will not want a decision.
+    density = 0.0
+    receipt("density", "the lab set print density per roll — set yours? (optional)")
+    note("a colour transform can't know how dense your roll was; it's the biggest\n"
+         "single difference left between this and the lab's own file.")
+    if yes(False):
+        steps = [(-0.30, "denser"), (-0.15, ""), (0.0, "as the LUT renders it"), (+0.15, ""), (+0.30, "lighter")]
+        with step("rendering the density ladder"):
+            lad_rows = []
+            w = Wedge(min(3, len(rows)))
+            for r in rows[:3]:
+                a0 = r["tiles"][0][0]
+                tiles = []
+                for dv, tag in steps:
+                    g = np.ones(3, np.float32) * (2.0 ** dv)
+                    tiles.append((lutmod.apply_trilinear(lattice_of(look), balmod.apply_gains(a0, g)),
+                                  f"{dv:+.2f} stops" + (f" · {tag}" if tag else ""),
+                                  sheet.COLORS["lut"] if dv == 0 else sheet.COLORS["alt"]))
+                lad_rows.append({"title": r["title"], "tiles": tiles})
+                w.step()
+        ladder = out_dir / "density.jpg"
+        with step("building the density sheet"):
+            sheet.save_sheet(sheet.build_sheet(lad_rows, tile_h=230), ladder, quality=85)
+        open_file(ladder)
+        note(f"opened · {short(ladder)}")
+        pick = options([(f"{dv}", f"{dv:+.2f}") for dv, _ in steps], default_idx=2)
+        density = float(pick)
+        receipt("density", f"{density:+.2f} stops for the whole roll", "ok")
+        note("applied to every frame; the lab set it per roll too")
+    else:
+        note("leaving it as the LUT renders it")
+    out()
+
     # ◆ grade
     import shutil as _sh
-    already = [f for f in files if (out_dir / f.name).exists()]
+    already = [f for f in files if (out_dir / f.name).with_suffix(imgio.output_suffix(bits)).exists()]
     todo = len(files) - len(already)
     free_gb = _sh.disk_usage(out_dir).free / 1e9
-    need_gb = todo * 0.035
+    need_gb = todo * (0.9 if bits >= 16 else 0.035)
     mins = max(1, round(todo * SECONDS_PER_FRAME / 60))
     receipt("grade", f"about {mins} min · {need_gb:.1f} GB needed · {free_gb:.0f} GB free")
     if already:
@@ -867,7 +931,8 @@ def _run() -> int:
             keep_awake = None
     try:
         with step(f"grading {n_run} frames"):
-            ap.grade_folder(folder, out_dir, cube, balance_mode="off", resume=True, rotations=rotations, limit=limit, log=lambda m: log(m))
+            ap.grade_folder(folder, out_dir, cube, balance_mode="off", resume=True, rotations=rotations,
+                        limit=limit, density=density, bits=bits, log=lambda m: log(m))
     except Exception as e:
         write_log("grading", repr(e))
         out()
@@ -883,7 +948,7 @@ def _run() -> int:
     if rotations:
         (out_dir / "rotations.json").write_text(json.dumps(rotations, indent=1))
     (out_dir / "saltgate.json").write_text(json.dumps({"source": str(folder), "lut": str(cube), "stock": stock,
-                                                      "look": look.key, "film": borrowed or stock,
+                                                      "look": look.key, "density": density, "bits": bits, "film": borrowed or stock,
                                                       "rotated": bool(rotations)}, indent=1))
 
     # ◆ done

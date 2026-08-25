@@ -82,6 +82,7 @@ def _cmd_apply(args) -> int:
             cache_dir=cache,
             limit=args.limit,
             density=args.density,
+            bits=args.bits,
             rotations=(__import__("json").loads(Path(args.rotations).read_text()) if args.rotations else None),
             log=log,
         )
@@ -142,6 +143,8 @@ def main(argv=None) -> int:
     p.add_argument("--density", type=float, default=0.0,
                    help="print density in stops (negative = denser/darker), e.g. -0.3")
     p.add_argument("--quality", type=int, default=95)
+    p.add_argument("--bits", type=int, default=8, choices=[8, 16],
+                   help="16 writes lossless 16-bit TIFF; only meaningful from 16-bit input (jxl/jp2/tif)")
     p.add_argument("--image-area", default=None, help="fx,fy,fw,fh fractions")
     p.add_argument("--resume", action="store_true")
     p.add_argument("--force", action="store_true")
