@@ -48,8 +48,12 @@ def grade_one(
     quality: int = 95,
     density: float = 0.0,
     rotate_k: int = 0,
+    bits: int = 8,
 ) -> dict:
     t0 = time.time()
+    if bits >= 16:
+        return _grade_one_16(src, dst, lattice, gains_density=density, quality=quality,
+                             rotate_k=rotate_k, t0=t0)
     gains = np.ones(3)
     if balance_mode != "off" and anchors:
         preview = imgio.read_image(src, max_px=1200)
@@ -91,6 +95,32 @@ def grade_one(
     }
 
 
+def _grade_one_16(src: Path, dst: Path, lattice, gains_density: float, quality: int,
+                  rotate_k: int, t0: float) -> dict:
+    """16-bit path: decode at true depth, grade in float, write 16-bit TIFF.
+
+    Kept separate from the 8-bit path on purpose. That one processes uint8 strips
+    in place to hold a 147 MP frame in ~1 GB; a 16-bit frame cannot use the same
+    trick because the decoders (JXL, JP2) only hand back whole images, so this
+    branch trades memory for depth and the worker count is reduced to match.
+    """
+    img = imgio.read_image(src)
+    rgb = img.rgb
+    g = np.float32(2.0 ** gains_density)
+    if gains_density:
+        rgb = balance.apply_gains(rgb, np.full(3, g, np.float32))
+    out = np.empty_like(rgb)
+    for y0 in range(0, rgb.shape[0], STRIP_ROWS):
+        out[y0:y0 + STRIP_ROWS] = lutmod.apply_trilinear(lattice, rgb[y0:y0 + STRIP_ROWS])
+    del rgb
+    if rotate_k % 4:
+        from . import orient
+        out = orient.apply_rotation(out, rotate_k)
+    imgio.write_image(dst, out, bit_depth=16, icc_bytes=img.icc_bytes, exif_bytes=img.exif_bytes)
+    del out
+    return {"file": src.name, "gains": [round(float(g), 4)] * 3, "seconds": round(time.time() - t0, 1)}
+
+
 def grade_folder(
     in_dir: Path,
     out_dir: Path,
@@ -105,6 +135,7 @@ def grade_folder(
     limit: int | None = None,
     density: float = 0.0,
     rotations: dict | None = None,
+    bits: int = 8,
     log=print,
 ) -> list[dict]:
     lattice, title = lutmod.read_cube(cube_path)
@@ -113,9 +144,10 @@ def grade_folder(
     if balance_mode != "off" and not anchors:
         log(f"[apply] WARNING: --balance {balance_mode} requested but {cube_path.name} has no .stats.json anchors; no balancing will be applied")
 
-    files = [f for f in imgio.list_images(in_dir) if f.suffix.lower() in (".jpg", ".jpeg")]
+    files = [f for f in imgio.list_images(in_dir) if f.suffix.lower() in imgio.GRADEABLE_EXTS]
     if not files:
-        raise RuntimeError(f"no JPEGs found in {in_dir}")
+        raise RuntimeError(f"no scans found in {in_dir} "
+                           f"(looked for {', '.join(sorted(imgio.GRADEABLE_EXTS))})")
     out_dir.mkdir(parents=True, exist_ok=True)
 
     area_frac = image_area
@@ -124,7 +156,7 @@ def grade_folder(
 
     todo = []
     for f in files:
-        dst = out_dir / f.name
+        dst = (out_dir / f.name).with_suffix(imgio.output_suffix(bits))
         if resume and dst.exists():
             continue
         todo.append((f, dst))
@@ -133,6 +165,9 @@ def grade_folder(
 
     if workers is None:
         workers = default_workers()
+    if bits >= 16:
+        # a 16-bit frame is decoded whole (float32 in, uint16 out), not in strips
+        workers = max(1, min(workers, 2))
     log(
         f"[apply] {len(todo)} of {len(files)} frames with '{title}' "
         f"(balance={balance_mode}, workers={workers}, est. peak ~{workers * PEAK_GB_PER_WORKER:.1f} GB "
@@ -144,7 +179,7 @@ def grade_folder(
         futs = {
             ex.submit(grade_one, src, dst, lattice, anchors, balance_mode,
                       balance_strength, area_frac, quality, density,
-                      (rotations or {}).get(src.name, {}).get("k", 0)): src
+                      (rotations or {}).get(src.name, {}).get("k", 0), bits): src
             for src, dst in todo
         }
         done = 0

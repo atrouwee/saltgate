@@ -22,6 +22,11 @@ except ImportError:  # pragma: no cover - depends on environment
     HAVE_JXL_PLUGIN = False
 
 SUPPORTED_EXTS = {".jpg", ".jpeg", ".jp2", ".j2k", ".jxl", ".tif", ".tiff", ".png"}
+# What the tool will grade. Narrower than SUPPORTED_EXTS (no .png: the lab never
+# ships one) and defined ONCE -- the wizard and apply.grade_folder each used to
+# carry their own .jpg-only copy, so accepting 16-bit input in one of them left
+# the other raising "no JPEGs found".
+GRADEABLE_EXTS = {".jpg", ".jpeg", ".jxl", ".jp2", ".j2k", ".tif", ".tiff"}
 
 
 @dataclasses.dataclass
@@ -156,6 +161,27 @@ def read_image(path: str | Path, max_px: int | None = None) -> ImageData:
             rgb, depth, icc = _decode_jxl_16(path)
         except Exception:
             rgb = None
+    if ext in (".tif", ".tiff"):
+        # Pillow has no 16-bit RGB mode, so it silently hands back 8 bits and the
+        # depth we just wrote is lost. tifffile reads the real samples.
+        try:
+            import tifffile
+            with tifffile.TiffFile(str(path)) as tf:
+                arr = tf.asarray()
+                page = tf.pages[0]
+                tag = page.tags.get(34675)
+                icc = bytes(tag.value) if tag is not None else None
+            if arr.ndim == 2:
+                arr = arr[..., None].repeat(3, axis=-1)
+            arr = arr[..., :3]
+            if arr.dtype == np.uint16:
+                rgb, depth = arr.astype(np.float32) / 65535.0, 16
+            elif arr.dtype == np.uint8:
+                rgb, depth = arr.astype(np.float32) / 255.0, 8
+            else:
+                rgb, depth = np.clip(arr.astype(np.float32), 0, 1), 16
+        except Exception:
+            rgb = None
     if rgb is None:
         try:
             img = Image.open(path)
@@ -253,3 +279,33 @@ def write_jpeg(
     if exif_bytes:
         kwargs["exif"] = exif_bytes
     img.save(str(path), "JPEG", **kwargs)
+
+
+def write_image(path, rgb: np.ndarray, bit_depth: int = 8, icc_bytes: bytes | None = None,
+                exif_bytes: bytes | None = None, quality: int = 95) -> None:
+    """Write float32 [0,1] RGB out at 8 or 16 bits.
+
+    16-bit goes to TIFF, because it is the one lossless 16-bit container every
+    editor reads. The lab's own 8-bit 4:2:0 delivery costs 2.2 dE against a
+    16-bit original -- measured -- so re-imposing that on our own output would
+    add more error than the colour transform still has in it.
+    """
+    path = Path(path)
+    a = np.clip(rgb, 0.0, 1.0)
+    if bit_depth >= 16:
+        import tifffile
+        extratags = [(34675, "B", len(icc_bytes), icc_bytes, True)] if icc_bytes else []
+        tifffile.imwrite(str(path), (a * 65535.0 + 0.5).astype(np.uint16),
+                         photometric="rgb", compression="zlib", extratags=extratags)
+        return
+    im = Image.fromarray((a * 255.0 + 0.5).astype(np.uint8), mode="RGB")
+    kw = {"quality": quality, "subsampling": 0}
+    if icc_bytes:
+        kw["icc_profile"] = icc_bytes
+    if exif_bytes:
+        kw["exif"] = exif_bytes
+    im.save(str(path), "JPEG", **kw)
+
+
+def output_suffix(bit_depth: int) -> str:
+    return ".tif" if bit_depth >= 16 else ".jpg"
