@@ -12,6 +12,12 @@ report/**
 !report/**/*.json
 !report/**/*.md
 !report/**/*.csv
+# The per-frame catalogue indexes the author's personal photographs by absolute
+# path and describes their content (91 notes name a baby or nudity). The
+# aggregate reports carry the findings; the index itself never enters git.
+report/catalogue.json
+report/catalogue.csv
+report/labeling/
 out/
 __pycache__/
 *.pyc

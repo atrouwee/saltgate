@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "saltgate"
-version = "0.1.18"
+version = "0.1.19"
 description = "SALTGATE: open tools for finishing flat SILBERSALZ scans and preserving a colour workflow photographers love (LUTs, batch grading, pair fitting)."
 readme = "README.md"
 license = { text = "MIT" }
@@ -19,7 +19,8 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-rotate = ["torch", "torchvision"]          # content-based auto-rotation (ResNet probe)
+# no `rotate` extra: auto-rotation runs its ResNet backbone as ONNX through the
+# opencv already required above. torch is honoured if present, never installed.
 dev = ["pytest"]
 
 [project.urls]
