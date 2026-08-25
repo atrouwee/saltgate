@@ -560,11 +560,12 @@ def ensure_orientation() -> bool:
     from . import orient
 
     if not orient.have_backbone():
+        # No second confirmation: saying yes to "put the frames the right way up"
+        # is the decision. The model normally arrives with the installer, so this
+        # runs only when that was skipped, and answering no there would just
+        # leave the feature they asked for broken.
         mb = round(orient.BACKBONE["bytes"] / 1e6)
-        note(f"this needs the orientation model · a one-time {mb} MB download · get it now?")
-        if not yes(True):
-            return False
-        receipt("upright", f"downloading the orientation model · {mb} MB, once")
+        receipt("upright", f"fetching the orientation model · {mb} MB, once")
         bar = {}
 
         def on_progress(done: int, total: int) -> None:
