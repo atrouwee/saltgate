@@ -647,44 +647,83 @@ def _frame_label(name: str) -> str:
     return name.split("_")[-1].split("-")[0] or name
 
 
-def review_rotations(hard, rotations, frac, out_dir) -> int:
-    """Show the least-certain frames and let them be turned by hand.
+class GradeProgress:
+    """Counts frames as the grade finishes them. Paints nothing by itself.
 
-    Only ever called at a terminal: the sheet is the whole point, and a piped
-    run has nobody to look at it.
+    While the rotation review holds the screen, a progress bar would fight the
+    prompt for the cursor -- so the bar is *attached* only once the prompts are
+    done, and until then the count is simply read into the prompt's own legend.
     """
-    from . import imgio, orient as orient_mod, rebate, sheet
 
-    def build():
-        tiles = []
-        for i, f in enumerate(hard, 1):
-            a = rebate.crop_to_area(imgio.read_image(f, max_px=700).rgb, frac)
-            tiles.append((orient_mod.apply_rotation(a, rotations[f.name]["k"]),
-                          f"[{i}]  {_frame_label(f.name)}", None))
-        rows = [{"title": "", "tiles": tiles[i:i + 4]} for i in range(0, len(tiles), 4)]
-        path = out_dir / "check-upright.jpg"
-        sheet.save_sheet(sheet.build_sheet(rows, tile_h=240), path, quality=85)
-        return path
+    def __init__(self, total: int):
+        self.total, self.done, self.detail = max(total, 1), 0, "starting"
+        self._w = None
+        self._lock = threading.Lock()
 
-    with step("rendering the uncertain frames"):
-        path = build()
-    open_file(path)
-    note(f"they are numbered [1]-{'[%d]' % len(hard)} in check-upright.jpg")
-    fixed = 0
+    def attach(self, w) -> None:
+        with self._lock:
+            self._w = w
+            if w is not None and self.done:
+                w.step(self.done, detail=self.detail)
+
+    def log(self, msg: str) -> None:
+        if msg.startswith("  ["):
+            name = msg.split("]", 1)[1].strip().split(" ")[0]
+            label = name.split("_")[-1].split("-")[0] if "_" in name else name
+            with self._lock:
+                self.done += 1
+                self.detail = f"frame {label}"
+                if self._w is not None:
+                    self._w.step(detail=self.detail)
+        elif msg.startswith("[apply]"):
+            with self._lock:
+                self.detail = "starting the workers"
+                if self._w is not None:
+                    self._w.detail = self.detail
+
+
+def check_sheet(hard, rotations, frac, lattice, out_dir):
+    """A quick, small grade of just the uncertain frames.
+
+    The full run has not started yet and would take minutes; these few are
+    rendered at preview size in a second or two, purely so there is something
+    readable to judge. A graded frame is far easier to tell up from than the
+    milky flat it came from -- which is why these frames were uncertain.
+    """
+    import numpy as np
+
+    from . import imgio, lut as lutmod, orient as orient_mod, rebate, sheet
+
+    tiles = []
+    for i, f in enumerate(hard, 1):
+        a = rebate.crop_to_area(imgio.read_image(f, max_px=900).rgb, frac)
+        a = orient_mod.apply_rotation(a, rotations[f.name]["k"])
+        tiles.append((np.clip(lutmod.apply_trilinear(lattice, a), 0, 1),
+                      f"[{i}]  {_frame_label(f.name)}", None))
+    rows = [{"title": "", "tiles": tiles[i:i + 4]} for i in range(0, len(tiles), 4)]
+    path = out_dir / "check-upright.jpg"
+    sheet.save_sheet(sheet.build_sheet(rows, tile_h=240), path, quality=85)
+    return path
+
+
+def review_turns(hard, prog) -> dict:
+    """Ask about each uncertain frame while the full grade runs behind it.
+
+    Returns {filename: quarter turns anticlockwise}. Nothing is applied here:
+    the frames are still being written, so the corrections are collected now and
+    re-graded once the run is done.
+    """
+    note(f"numbered [1] to [{len(hard)}] in check-upright.jpg \u00b7 the roll keeps grading while you look")
+    turns = {}
     for i, f in enumerate(hard, 1):
         turn = options([("0", "already upright"), ("1", "turn left"),
                         ("3", "turn right"), ("2", "upside down")],
                        default_idx=0, per_row=4,
-                       legend=f"[{i}] of {len(hard)} in the sheet \u00b7 frame {_frame_label(f.name)}")
+                       legend=f"[{i}] of {len(hard)} \u00b7 frame {_frame_label(f.name)} \u00b7 "
+                              f"{prog.done}/{prog.total} graded so far")
         if turn != "0":
-            rotations[f.name]["k"] = (rotations[f.name]["k"] + int(turn)) % 4
-            rotations[f.name]["manual"] = True
-            fixed += 1
-    if fixed:
-        with step("re-rendering so you can check"):
-            path = build()
-        open_file(path)
-    return fixed
+            turns[f.name] = int(turn)
+    return turns
 
 
 def open_file(path: Path) -> None:
@@ -1088,19 +1127,10 @@ def _run() -> int:
                     area = rebate.crop_to_area(imgio.read_image(f, max_px=900).rgb, frac)
                     rotations[f.name] = {"k": 0, "confidence": 1.0} if rebate.looks_blank(area) else model.predict(area)
                     w.step(detail=f"frame {f.name.split('_')[-1].split('-')[0]}")
-            hard = sorted((f for f in files if rotations[f.name].get("confidence", 1) < REVIEW_CONF),
-                          key=lambda f: rotations[f.name]["confidence"])[:REVIEW_MAX]
-            if hard and _keyboard() is not None:
-                note(f"{len(hard)} of {len(files)} frames were hard to judge — that is where the "
-                     f"mistakes are: on a test roll, five of six went wrong in this group")
-                receipt("check", "look at them and turn any that came out on their side?")
-                if yes(True):
-                    fixed = review_rotations(hard, rotations, frac, out_dir)
-                    note(f"{fixed} turned by hand" if fixed else "all upright — nothing changed")
-            else:
-                low = sum(1 for r in rotations.values() if r.get("confidence", 1) < 0.5)
-                if low:
-                    note(f"{low} frames were less certain · check them on the preview and in the result")
+            low = sum(1 for r in rotations.values() if r.get("confidence", 1) < REVIEW_CONF)
+            if low:
+                note(f"{low} frames were hard to judge — you'll get to check those at the end, "
+                     f"once they are graded and actually readable")
     else:
         note("keeping the film-strip orientation")
     out()
@@ -1243,29 +1273,62 @@ def _run() -> int:
     n_run = min(todo, limit) if limit else todo
 
     from . import apply as ap
-    w = Wedge(n_run)
-    # nothing completes for the first ~30 s (workers start, frame 1 decodes), so the
-    # bar would otherwise sit at 0/N looking stuck; its heartbeat and this line cover it
-    w.detail = "starting"
 
-    def log(msg: str) -> None:
-        if msg.startswith("  ["):
-            name = msg.split("]", 1)[1].strip().split(" ")[0]
-            w.step(detail=f"frame {name.split('_')[-1].split('-')[0] if '_' in name else name}")
-        elif msg.startswith("[apply]"):
-            w.detail = "starting the workers"
+    # ◆ check — the uncertain frames are graded small FIRST, so they can be
+    # judged while the full run happens behind them. Rotation is the one
+    # question this tool cannot answer for itself, and making someone settle it
+    # before they have seen a single graded frame gets it answered badly.
+    hard = []
+    if rotations and _keyboard() is not None:
+        hard = sorted((f for f in files
+                       if rotations.get(f.name, {}).get("confidence", 1) < REVIEW_CONF),
+                      key=lambda f: rotations[f.name]["confidence"])[:REVIEW_MAX]
+    check_path = None
+    if hard:
+        out()
+        receipt("check", f"{len(hard)} frames were hard to turn the right way up")
+        with step("grading those few small, so you can judge them now"):
+            check_path = check_sheet(hard, rotations, frac, lattice_of(look), out_dir)
+        open_file(check_path)
 
+    prog = GradeProgress(n_run)
     keep_awake = None
     if sys.platform == "darwin":
         try:
             keep_awake = subprocess.Popen(["caffeinate", "-i", "-w", str(os.getpid())])
         except Exception:
             keep_awake = None
+
+    failure = {}
+
+    def bulk() -> None:
+        try:
+            ap.grade_folder(folder, out_dir, cube, balance_mode="off", resume=True, rotations=rotations,
+                            limit=limit, density=density, bits=bits, log=prog.log)
+        except Exception as exc:                     # surfaced on the main thread below
+            failure["e"] = exc
+
+    worker = threading.Thread(target=bulk, daemon=True)
+    worker.start()
+
+    turns = {}
+    if check_path is not None:
+        turns = review_turns(hard, prog)
+
+    w = Wedge(n_run)
+    w.detail = prog.detail
+    prog.attach(w)
     try:
         with step(f"grading {n_run} frames"):
-            ap.grade_folder(folder, out_dir, cube, balance_mode="off", resume=True, rotations=rotations,
-                        limit=limit, density=density, bits=bits, log=lambda m: log(m))
-    except Exception as e:
+            while worker.is_alive():
+                worker.join(0.2)
+    finally:
+        prog.attach(None)
+        w.close()
+        if keep_awake is not None:
+            keep_awake.terminate()
+    if "e" in failure:
+        e = failure["e"]
         write_log("grading", repr(e))
         out()
         receipt("stopped", "frames finished so far are kept", "err")
@@ -1273,10 +1336,22 @@ def _run() -> int:
         note("run saltgate again to continue")
         out()
         return 1
-    finally:
-        w.close()
-        if keep_awake is not None:
-            keep_awake.terminate()
+
+    # corrections collected during the review, applied now the originals are free
+    if turns:
+        from . import imgio as _imgio
+        src_by_name = {f.name: f for f in files}
+        for name, turn in turns.items():
+            rotations[name]["k"] = (rotations[name].get("k", 0) + turn) % 4
+            rotations[name]["manual"] = True
+            dst = out_dir / Path(name).with_suffix(_imgio.output_suffix(bits)).name
+            with step(f"re-grading {_frame_label(name)}"):
+                ap.grade_one(src_by_name[name], dst, lattice_of(look), None, "off", 1.0, None, 95,
+                             density, rotations[name]["k"], bits)
+        receipt("fixed", f"{len(turns)} turned the right way up and re-graded", "ok")
+    elif check_path is not None:
+        note("all upright — nothing changed")
+
     if rotations:
         (out_dir / "rotations.json").write_text(json.dumps(rotations, indent=1))
     (out_dir / "saltgate.json").write_text(json.dumps({"source": str(folder), "lut": str(cube), "stock": stock,
