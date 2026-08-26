@@ -716,6 +716,7 @@ def review_turns(hard, prog) -> dict:
     note(f"numbered [1] to [{len(hard)}] in check-upright.jpg \u00b7 the roll keeps grading while you look")
     turns = {}
     for i, f in enumerate(hard, 1):
+        out(); out()                # each frame is its own question, not a list item
         turn = options([("0", "already upright"), ("1", "turn left"),
                         ("3", "turn right"), ("2", "upside down")],
                        default_idx=0, per_row=4,
@@ -723,6 +724,7 @@ def review_turns(hard, prog) -> dict:
                               f"{prog.done}/{prog.total} graded so far")
         if turn != "0":
             turns[f.name] = int(turn)
+    out()
     return turns
 
 
@@ -1290,6 +1292,7 @@ def _run() -> int:
         with step("grading those few small, so you can judge them now"):
             check_path = check_sheet(hard, rotations, frac, lattice_of(look), out_dir)
         open_file(check_path)
+        out()
 
     prog = GradeProgress(n_run)
     keep_awake = None
@@ -1315,6 +1318,7 @@ def _run() -> int:
     if check_path is not None:
         turns = review_turns(hard, prog)
 
+    out()
     w = Wedge(n_run)
     w.detail = prog.detail
     prog.attach(w)
@@ -1325,6 +1329,7 @@ def _run() -> int:
     finally:
         prog.attach(None)
         w.close()
+        out(); out()          # the bar and its detail line are not a receipt's neighbours
         if keep_awake is not None:
             keep_awake.terminate()
     if "e" in failure:
@@ -1348,9 +1353,13 @@ def _run() -> int:
             with step(f"re-grading {_frame_label(name)}"):
                 ap.grade_one(src_by_name[name], dst, lattice_of(look), None, "off", 1.0, None, 95,
                              density, rotations[name]["k"], bits)
+        out()
         receipt("fixed", f"{len(turns)} turned the right way up and re-graded", "ok")
+        out()
     elif check_path is not None:
+        out()
         note("all upright — nothing changed")
+        out()
 
     if rotations:
         (out_dir / "rotations.json").write_text(json.dumps(rotations, indent=1))
