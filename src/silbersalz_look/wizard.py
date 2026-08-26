@@ -634,6 +634,59 @@ def spinner_while(proc: subprocess.Popen, label: str) -> None:
             time.sleep(0.15)
 
 
+# Frames the model is least sure about are where its mistakes are. Measured on
+# roll 26.18_077 (129 frames, the shipped roll-median crop): six frames came out
+# on their side, and five of those six were in the six LOWEST confidence scores
+# on the whole roll. Reviewing ten frames catches five of the six errors, so the
+# offer is worth making and worth keeping short.
+REVIEW_CONF = 0.2
+REVIEW_MAX = 12
+
+
+def _frame_label(name: str) -> str:
+    return name.split("_")[-1].split("-")[0] or name
+
+
+def review_rotations(hard, rotations, frac, out_dir) -> int:
+    """Show the least-certain frames and let them be turned by hand.
+
+    Only ever called at a terminal: the sheet is the whole point, and a piped
+    run has nobody to look at it.
+    """
+    from . import imgio, orient as orient_mod, rebate, sheet
+
+    def build():
+        tiles = []
+        for i, f in enumerate(hard, 1):
+            a = rebate.crop_to_area(imgio.read_image(f, max_px=700).rgb, frac)
+            tiles.append((orient_mod.apply_rotation(a, rotations[f.name]["k"]),
+                          f"[{i}]  {_frame_label(f.name)}", None))
+        rows = [{"title": "", "tiles": tiles[i:i + 4]} for i in range(0, len(tiles), 4)]
+        path = out_dir / "check-upright.jpg"
+        sheet.save_sheet(sheet.build_sheet(rows, tile_h=240), path, quality=85)
+        return path
+
+    with step("rendering the uncertain frames"):
+        path = build()
+    open_file(path)
+    note(f"they are numbered [1]-{'[%d]' % len(hard)} in check-upright.jpg")
+    fixed = 0
+    for i, f in enumerate(hard, 1):
+        turn = options([("0", "already upright"), ("1", "turn left"),
+                        ("3", "turn right"), ("2", "upside down")],
+                       default_idx=0, per_row=4,
+                       legend=f"[{i}] of {len(hard)} in the sheet \u00b7 frame {_frame_label(f.name)}")
+        if turn != "0":
+            rotations[f.name]["k"] = (rotations[f.name]["k"] + int(turn)) % 4
+            rotations[f.name]["manual"] = True
+            fixed += 1
+    if fixed:
+        with step("re-rendering so you can check"):
+            path = build()
+        open_file(path)
+    return fixed
+
+
 def open_file(path: Path) -> None:
     if os.environ.get("SALTGATE_NO_OPEN"):
         return
@@ -1035,8 +1088,19 @@ def _run() -> int:
                     area = rebate.crop_to_area(imgio.read_image(f, max_px=900).rgb, frac)
                     rotations[f.name] = {"k": 0, "confidence": 1.0} if rebate.looks_blank(area) else model.predict(area)
                     w.step(detail=f"frame {f.name.split('_')[-1].split('-')[0]}")
-            low = sum(1 for r in rotations.values() if r.get("confidence", 1) < 0.5)
-            note(f"{low} frames were hard to judge · check them on the preview and in the result")
+            hard = sorted((f for f in files if rotations[f.name].get("confidence", 1) < REVIEW_CONF),
+                          key=lambda f: rotations[f.name]["confidence"])[:REVIEW_MAX]
+            if hard and _keyboard() is not None:
+                note(f"{len(hard)} of {len(files)} frames were hard to judge — that is where the "
+                     f"mistakes are: on a test roll, five of six went wrong in this group")
+                receipt("check", "look at them and turn any that came out on their side?")
+                if yes(True):
+                    fixed = review_rotations(hard, rotations, frac, out_dir)
+                    note(f"{fixed} turned by hand" if fixed else "all upright — nothing changed")
+            else:
+                low = sum(1 for r in rotations.values() if r.get("confidence", 1) < 0.5)
+                if low:
+                    note(f"{low} frames were less certain · check them on the preview and in the result")
     else:
         note("keeping the film-strip orientation")
     out()
