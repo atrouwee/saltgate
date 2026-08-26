@@ -111,6 +111,8 @@ This project is our way of taking that influence seriously: studying it carefull
 
 ## Independence, privacy, trademark, license
 
+What changed between versions: [`CHANGELOG.md`](CHANGELOG.md).
+
 Auto-rotation uses a ResNet-50 backbone from torchvision (BSD-3-Clause, trained on ImageNet-1K) and the YuNet face detector from OpenCV Zoo — provenance and licences in [`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md).
 
 Built by Adriaan Trouwee with the Silbersalz community. Pairs: Cody (Gold 200), Faraz (500T) — donated images are never published; pair identifiers in the shipped statistics are anonymised. Independent of and unaffiliated with SILBERSALZ Film GmbH; "SILBERSALZ" and "SILBERSALZ35" are the lab's names, used here descriptively. The LUTs contain no image content. Code and LUTs: **MIT**.
