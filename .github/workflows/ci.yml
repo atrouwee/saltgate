@@ -1,6 +1,8 @@
 name: build & smoke test
 on:
-  push: { branches: [main] }
+  # `next` is where work lands and where the gate matters: main only ever moves
+  # on a release, and a release will not proceed unless the run on next is green.
+  push: { branches: [main, next] }
   pull_request:
 jobs:
   test:
