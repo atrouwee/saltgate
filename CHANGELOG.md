@@ -6,6 +6,25 @@ around them.
 
 Full technical history: `luts/CHANGELOG.md` for the LUTs themselves.
 
+## 0.2.0 — 250D fitted on the lab's own files · **renders change**
+The default 250D LUT changes. Your 250D frames will look different: warmer and
+lighter than before, and less green in the neutrals.
+
+It is fitted on 22 real flat/graded pairs from two photographers across four
+rolls — and most of those pairs are now the lab's original 16-bit files instead
+of re-compressed JPEGs. That mostly buys a cleaner *measurement*: given its own
+exposure per frame the fit now reads 0.8 ΔE2000 against the lab, which the
+previous version could not show because its own reference files carried
+compression error. The rendering itself moved very little.
+
+If it reads too warm on your roll, the previous look is still there: pick
+**archive-matched** in the walkthrough, or `saltgate apply --look 250d:proxy`.
+Neither is provably right for a roll we have no pairs from, which is why the
+walkthrough shows you both on your own frames before writing anything.
+
+Also: every prompt now moves with ← → ↑ ↓ and explains each option as you land
+on it, and density is a scale you slide rather than a list of numbers.
+
 ## 0.1.25 — arrow through it
 Every choice in the walkthrough now moves with ↑↓ and confirms with Enter — film,
 look, density, yes/no. Typing the number still works. The 250D look selector
