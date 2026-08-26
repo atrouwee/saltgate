@@ -7,9 +7,13 @@ in the project's research record.
 Where a second entry exists it is there for a REASON that is not "it might be
 better". On 250D the two entries render about 10 b* apart on identical frames,
 and we cannot say which is right: the pair fit reproduces a measured flat→graded
-transform, the proxy reproduces the distribution of one archive, and comparing
-them needs flat/graded pairs from the roll in question. So the walkthrough
-renders both on the photographer's own frames and asks.
+transform, the archive-matched LUT reproduces the distribution of one archive,
+and comparing them needs flat/graded pairs from the roll in question. So the
+walkthrough renders both on the photographer's own frames and asks.
+
+The pair fit leads because it is the one with ground truth behind it. That is a
+statement about evidence, not about taste, and the ordering should change the
+moment the evidence does.
 
 Deliberately free of heavy imports: `cli.py` reads this on every invocation and
 must not pay for scipy to print --help.
@@ -31,15 +35,20 @@ class Look(NamedTuple):
 # First entry per stock is the default. Order is what the menu shows.
 LOOKS: dict[str, list[Look]] = {
     "250d": [
+        Look("paired", "pair-fitted", "silbersalz-250d_v4-jxl_33.cube", "BETA",
+             "the DEFAULT since v0.1.27. fitted from 22 real flat/graded pairs, two "
+             "photographers, four rolls -- the only 250D LUT measured against what the lab "
+             "actually returned rather than inferred from finished frames. against that "
+             "ground truth it is by far the closer of the two. caveat worth knowing: 16 of "
+             "the 22 pairs are a single roll, and on the author's own rolls it renders "
+             "warmer and lighter than the archive-matched LUT. which is right for YOUR roll "
+             "is not something anyone can measure without pairs from it."),
         Look("proxy", "archive-matched", "silbersalz-250d_v0.1-statistical_33.cube", "PROXY",
-             "estimated from ~700 of the author's own lab-graded 250D frames rather than measured "
-             "from pairs. the conservative default: it is what this tool has always shipped, and on "
-             "the author's own rolls it reads closer than the pair fit does."),
-        Look("paired", "pair-fitted", "silbersalz-250d_v2-paired_33.cube", "BETA",
-             "fitted from 22 real flat/graded pairs, two photographers. against true flat→graded "
-             "ground truth it is by far the closer of the two — the only place we can actually check. "
-             "but 16 of the 22 pairs are a single roll, and it renders warmer than the proxy. which "
-             "is right for YOUR roll is not something we can measure without pairs of your own."),
+             "what shipped as the default up to v0.1.26. estimated from ~700 of the "
+             "author's own lab-graded 250D frames rather than measured from pairs, so it "
+             "carries that archive's cameras, light and choices with it. cooler and darker "
+             "than the pair fit. no ground truth stands behind it -- but if the pair fit "
+             "reads too warm on your roll, this is the alternative to reach for."),
     ],
     "50d": [
         Look("proxy", "proxy", "silbersalz-50d_v0-statistical_33.cube", "PROXY",
