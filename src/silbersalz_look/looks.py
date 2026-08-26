@@ -36,7 +36,7 @@ class Look(NamedTuple):
 LOOKS: dict[str, list[Look]] = {
     "250d": [
         Look("paired", "pair-fitted", "silbersalz-250d_v4-jxl_33.cube", "BETA",
-             "the DEFAULT since v0.1.27. fitted from 22 real flat/graded pairs, two "
+             "the DEFAULT since v0.2.0. fitted from 22 real flat/graded pairs, two "
              "photographers, four rolls -- the only 250D LUT measured against what the lab "
              "actually returned rather than inferred from finished frames. against that "
              "ground truth it is by far the closer of the two. caveat worth knowing: 16 of "
