@@ -264,35 +264,189 @@ def prompt(default: str | None = None) -> str:
 
 
 def yes(default: bool = True) -> bool:
-    ans = prompt("Y/n" if default else "y/N").lower()
-    if ans in ("y/n", "y/N".lower()):
-        return default
-    return default if not ans else ans.startswith("y")
+    """A two-option choice, driven the same way as every other one.
 
-
-def options(items: list[tuple[str, str]], per_row: int = 3, default_idx: int = 0,
-            tags: dict[str, str | None] | None = None, legend: str | None = None) -> str:
-    """Render [1] [2] [3] in columns under the current receipt line; return the chosen key.
-
-    tags: optional grey word after each label (readiness); legend: grey line under the list.
+    The piped path is untouched: an empty line takes the default and y/n still
+    work, because the smoke test, CI and anyone scripting this depend on it.
     """
-    tags = tags or {}
-    plain = {k: f"{lbl}{' · ' + tags[k] if tags.get(k) else ''}" for k, lbl in items}
-    width = max(len(v) for v in plain.values()) + 3
+    if _keyboard() is None:
+        ans = prompt("Y/n" if default else "y/N").lower()
+        if ans in ("y/n", "y/N".lower()):
+            return default
+        return default if not ans else ans.startswith("y")
+    return options([("y", "yes"), ("n", "no")], per_row=2,
+                   default_idx=0 if default else 1) == "y"
+
+
+INVERT = "\033[7m"
+
+
+def _keyboard():
+    """Raw single-key reading, or None where that is not possible.
+
+    Returns None when stdin is not a terminal -- piped answers (the smoke test,
+    CI, anyone scripting the walkthrough) must keep working exactly as before,
+    so arrow keys are an enhancement for people at a keyboard and never a
+    requirement.
+    """
+    if not (sys.stdin.isatty() and interactive()):
+        return None
+    try:
+        import termios, tty  # noqa: F401
+    except ImportError:
+        return None          # Windows: fall back to typing a number
+    return termios
+
+
+def _read_key(termios) -> str:
+    """One keypress -> 'up' | 'down' | 'enter' | 'quit' | a single character."""
+    import tty
+    fd = sys.stdin.fileno()
+    saved = termios.tcgetattr(fd)
+    try:
+        tty.setcbreak(fd)
+        ch = sys.stdin.read(1)
+        if ch == "\x1b":                       # escape: an arrow, or a bare Esc
+            nxt = sys.stdin.read(1)
+            if nxt != "[":
+                return "quit"
+            return {"A": "up", "B": "down", "C": "down", "D": "up"}.get(sys.stdin.read(1), "")
+        if ch in ("\r", "\n"):
+            return "enter"
+        if ch in ("\x03", "\x04", "q"):       # ctrl-c, ctrl-d, q
+            return "quit"
+        return ch
+    finally:
+        termios.tcsetattr(fd, termios.TCSADRAIN, saved)
+
+
+def _fit_per_row(items, tags, per_row: int) -> int:
+    """How many options fit across this terminal.
+
+    The redraw moves the cursor up by a fixed number of LOGICAL lines, so a row
+    that wraps would put it in the wrong place and shred the display. Reflowing
+    to the real width is what keeps that from ever happening.
+    """
+    import shutil
+    width = shutil.get_terminal_size((100, 24)).columns
+    cell = max(len(f"{lbl}{' · ' + tags[k] if tags.get(k) else ''}") for k, lbl in items) + 6
+    return max(1, min(per_row, (width - COL - 4) // max(cell, 1)))
+
+
+def _option_rows(items, per_row, tags, selected=None) -> list[str]:
+    """One line per row of options; the selected one is a filled amber block.
+
+    Padding sits OUTSIDE the inverted run so the highlight is a rectangle around
+    the item rather than a bar across the column.
+    """
+    def visible(key, lbl):
+        t = f" · {tags[key]}" if tags.get(key) else ""
+        return f"{lbl}{t}"
+
+    width = max(len(visible(k, l)) for k, l in items) + 6
+    rows = []
     for i in range(0, len(items), per_row):
         cells = []
         for j, (key, lbl) in enumerate(items[i:i + per_row], start=i):
-            tag = f"{GREY} · {tags[key]}{RESET}" if tags.get(key) else ""
-            pad = " " * (width - len(plain[key]))
-            cells.append(f"{AMBER}[{j + 1}]{RESET} {lbl}{tag}{pad}")
-        out(f"  {' ' * COL}{''.join(cells).rstrip()}")
+            body = f"{j + 1} {visible(key, lbl)}"
+            pad = " " * max(0, width - len(body) - 3)
+            if j == selected:
+                # whole item negative: amber ground, terminal ink, snug border
+                cells.append(f"{AMBER}{INVERT} {body} {RESET}{pad}")
+            else:
+                # the leading space matches the highlight's left edge, so columns
+                # do not jump sideways as the selection moves
+                t = f"{GREY} · {tags[key]}{RESET}" if tags.get(key) else ""
+                cells.append(f" {GREY}{j + 1}{RESET} {lbl}{t} {pad}")
+        rows.append(f"  {' ' * COL}{''.join(cells).rstrip()}")
+    return rows
+
+
+def _wrap_to_width(text: str, indent: int) -> list[str]:
+    import shutil, textwrap
+    width = shutil.get_terminal_size((100, 24)).columns - indent - 2
+    return textwrap.wrap(text, max(30, width)) or [""]
+
+
+def options(items: list[tuple[str, str]], per_row: int = 3, default_idx: int = 0,
+            tags: dict[str, str | None] | None = None, legend: str | None = None,
+            details: dict[str, str] | None = None) -> str:
+    """Choose one option; return its key.
+
+    At a terminal: arrow keys move, Enter confirms, and the number still works
+    for anyone who would rather type it. Piped in: exactly the old behaviour.
+    """
+    tags = tags or {}
+    details = details or {}
+    kb = _keyboard()
+    if kb is not None:
+        per_row = _fit_per_row(items, tags, per_row)
+    if kb is None:
+        for line in _option_rows(items, per_row, tags):
+            out(line)
+        for k, lbl in items:          # piped: no hover, so every detail is printed
+            if details.get(k):
+                note(f"[{[i for i,(kk,_) in enumerate(items) if kk==k][0]+1}] {lbl} — {details[k]}")
+        if legend:
+            note(legend)
+        while True:
+            ans = prompt(str(default_idx + 1))
+            if ans.isdigit() and 1 <= int(ans) <= len(items):
+                return items[int(ans) - 1][0]
+            note(f"type a number between 1 and {len(items)}")
+
+    sel = max(0, min(default_idx, len(items) - 1))
+    rows = _option_rows(items, per_row, tags, sel)
+    detail_h = max((len(_wrap_to_width(d, COL + 2)) for d in details.values()), default=0)
+    for line in rows:
+        out(line)
+    for _ in range(detail_h):
+        out("")
     if legend:
         note(legend)
-    while True:
-        ans = prompt(str(default_idx + 1))
-        if ans.isdigit() and 1 <= int(ans) <= len(items):
-            return items[int(ans) - 1][0]
-        note(f"type a number between 1 and {len(items)}")
+    firsts = [lbl.strip().lower()[:1] for _, lbl in items]
+    by_letter = {c: i for i, c in enumerate(firsts) if firsts.count(c) == 1}
+    shortcut = ("or press " + "/".join(sorted(by_letter))) if len(by_letter) == len(items) <= 3 \
+        else "or type a number"
+    hint = f"  {' ' * COL}{GREY}↑↓ to move · Enter to choose · {shortcut}{RESET}"
+    out(hint)
+
+    def repaint(i):
+        paint("\033[F" * (len(rows) + detail_h + 1))
+        for line in _option_rows(items, per_row, tags, i):
+            paint(line + "\033[K\n")
+        body = _wrap_to_width(details.get(items[i][0], ""), COL + 2) if details else []
+        for n in range(detail_h):
+            txt = body[n] if n < len(body) else ""
+            paint(f"  {' ' * COL}{GREY}{txt}{RESET}\033[K\n")
+        paint(hint + "\033[K\n")
+
+    if detail_h:
+        repaint(sel)
+    with SILENCE.indicator():
+        while True:
+            key = _read_key(kb)
+            if key == "enter":
+                break
+            if key == "quit":
+                out(f"\n  {GREY}okay, stopping here. nothing was changed.{RESET}")
+                sys.exit(0)
+            if key == "up":
+                sel = (sel - 1) % len(items)
+            elif key == "down":
+                sel = (sel + 1) % len(items)
+            elif key.isdigit() and 1 <= int(key) <= len(items):
+                sel = int(key) - 1
+            elif key.lower() in by_letter:
+                sel = by_letter[key.lower()]
+            else:
+                continue
+            repaint(sel)
+    # leave the chosen state on screen, without the hint line
+    repaint(sel)
+    paint("\033[F" + "\033[K")
+    SILENCE.touch()
+    return items[sel][0]
 
 
 class Wedge:
@@ -510,9 +664,12 @@ def _apply_update(latest: str) -> None:
         note("the update didn't work — continuing with the current version")
         out()
         return
-    note(f"updated to v{latest} · relaunching")
+    note(f"restarting on v{latest}")
     out()
-    env = dict(os.environ, SALTGATE_NO_UPDATE="1")
+    # the relaunched process is told BOTH that it must not check again and what
+    # it came from, so it can say "updated" instead of silently replaying the
+    # banner and a checking-for-updates line it is not actually running
+    env = dict(os.environ, SALTGATE_NO_UPDATE="1", SALTGATE_UPDATED_FROM=__version__)
     os.execve(sys.argv[0], [sys.argv[0]] + sys.argv[1:], env)
 
 
@@ -637,12 +794,19 @@ def _run() -> int:
     out(f"        finish your flat SILBERSALZ scans")
     out(f"        {GREY}the name is a wink · the work is sincere{RESET}")
     out()
-    # the slow part of starting up (loading image libraries, checking for updates) happens
-    # behind a status line so the window is never silent
-    with busy("warming up · checking for updates"):
+    # the slow part of starting up (loading image libraries, checking for updates)
+    # happens behind a status line so the window is never silent. The label has to
+    # match what is actually happening: after a self-update the check is skipped,
+    # and claiming otherwise made the relaunch look like a loop.
+    came_from = os.environ.pop("SALTGATE_UPDATED_FROM", None)
+    checking = not os.environ.get("SALTGATE_NO_UPDATE")
+    with busy("warming up · checking for updates" if checking else "warming up"):
         quiet_libraries()
         from . import imgio  # noqa: F401  (loads numpy / PIL / opencv)
-        latest = _fetch_latest()
+        latest = _fetch_latest() if checking else None
+    if came_from:
+        receipt("update", f"updated from v{came_from} — you are on v{__version__}", "ok")
+        out()
     if latest:
         _apply_update(latest)
 
@@ -815,13 +979,14 @@ def _run() -> int:
     if len(candidates) > 1:
         remembered = remembered_look(stock)
         receipt("look", "which one fits this roll?")
-        for j, c in enumerate(candidates):
-            note(f"[{j + 1}] {c.label} — {c.note}")
         if remembered:
-            note(f"remembered from last time: {look.label} · press Enter to keep it")
+            note(f"remembered from last time: {look.label}")
+        # the honest note follows the highlight rather than sitting above it as a
+        # wall of prose -- six lines of caveat used to bury the choice itself
         chosen = options([(c.key, c.label) for c in candidates],
                          default_idx=candidates.index(look),
-                         tags={c.key: READINESS.get(c.status, "proxy") for c in candidates})
+                         tags={c.key: READINESS.get(c.status, "proxy") for c in candidates},
+                         details={c.key: c.note for c in candidates})
         look = looksmod.resolve(stock, chosen)
         cube = looksmod.cube_path(look)
         remember_look(stock, look.key)
