@@ -6,6 +6,19 @@ around them.
 
 Full technical history: `luts/CHANGELOG.md` for the LUTs themselves.
 
+## 0.2.1 — check the frames it wasn't sure about
+Auto-rotation is right about 95% of the time, and it knows which frames it is
+unsure of: on a test roll, five of the six it got wrong were among the six it
+was least confident about.
+
+So it now asks. The handful it is unsure of get graded small and on their own —
+a second or two, not the full run — into `check-upright.jpg`, and you answer one
+question per frame: already upright, turn left, turn right, upside down. The
+full roll grades the whole time you are looking, and each question shows how far
+it has got. Anything you turn is re-graded at the end.
+
+Nothing about how your files look has changed.
+
 ## 0.2.0 — 250D fitted on the lab's own files · **renders change**
 The default 250D LUT changes. Your 250D frames will look different: warmer and
 lighter than before, and less green in the neutrals.
