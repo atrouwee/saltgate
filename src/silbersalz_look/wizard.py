@@ -16,6 +16,7 @@ import time
 from pathlib import Path
 
 # ── palette ────────────────────────────────────────────────────────────────
+FG_NOTE = "\033[38;5;252m"
 AMBER, GREY, RED, BOLD, RESET = "\033[38;5;214m", "\033[38;5;245m", "\033[38;5;203m", "\033[1m", "\033[0m"
 COL = 12  # receipt label column width
 
@@ -40,9 +41,33 @@ READINESS_LEGEND = ("validated = fitted on real flat + graded pairs and checked 
                     "(250D) / (500T) = borrows that stock's LUT — same balance family; daylight ↔ tungsten measured 20+ ΔE apart · more pairs, less guesswork")
 
 
+def stock_detail(choice: str) -> str:
+    """What picking this film actually gets you — shown while hovering it.
+
+    This used to print only AFTER the choice was made, which is precisely when
+    it is no longer useful: whether a stock borrows another's LUT, and how much
+    that costs, is the thing you need in order to choose.
+    """
+    if choice == "other":
+        return ("most Silbersalz rolls were Vision3 daylight stock, so this starts from the 250D "
+                "proxy. tungsten film (200T/500T) would look blue with it — pick the stock if you can.")
+    if choice in BORROWS:
+        base_name = dict(STOCK_CHOICES)[BORROWS[choice]]
+        if choice == "125special":
+            return (f"no 125T pairs yet — borrows the {base_name} LUT. also tungsten-balanced, but "
+                    "'Edition Vivid' is a Fuji stock rather than Vision3, so expect a larger "
+                    "difference than between two Kodak stocks.")
+        return (f"no {dict(STOCK_CHOICES)[choice]} pairs yet — borrows the {base_name} LUT: same "
+                "balance family, same scan encoding. daylight and tungsten stocks measure 20+ ΔE "
+                "apart; within a family it is about 3.")
+    return LUTS[choice][2]
+
+
 def ask_stock() -> str:
     receipt("film", "which film was this roll?")
-    return options(STOCK_CHOICES, tags={k: readiness(k) for k, _ in STOCK_CHOICES}, legend=READINESS_LEGEND)
+    return options(STOCK_CHOICES, tags={k: readiness(k) for k, _ in STOCK_CHOICES},
+                   legend=READINESS_LEGEND,
+                   details={k: stock_detail(k) for k, _ in STOCK_CHOICES})
 
 
 def readiness(stock: str) -> str | None:
@@ -247,9 +272,14 @@ def receipt(label: str, text: str, tone: str = "accent") -> None:
 
 
 def note(text: str) -> None:
-    """Secondary text under a receipt line."""
-    for line in text.split("\n"):
-        out(f"  {' ' * COL}{GREY}{line}{RESET}")
+    """Secondary text under a receipt line, wrapped to the terminal.
+
+    Unwrapped, anything longer than the window was silently cut off at the right
+    edge -- the readiness legend lost half its meaning that way.
+    """
+    for para in text.split("\n"):
+        for line in (_wrap_to_width(para, COL + 2) if para.strip() else [""]):
+            out(f"  {' ' * COL}{GREY}{line}{RESET}")
 
 
 def prompt(default: str | None = None) -> str:
@@ -398,12 +428,14 @@ def options(items: list[tuple[str, str]], per_row: int = 3, default_idx: int = 0
     sel = max(0, min(default_idx, len(items) - 1))
     rows = _option_rows(items, per_row, tags, sel)
     detail_h = max((len(_wrap_to_width(d, COL + 2)) for d in details.values()), default=0)
+    if legend:
+        note(legend)          # static context, printed once, never repainted
+    out()                     # air between the question and the choices
     for line in rows:
         out(line)
+    out()                     # and between the choices and what explains them
     for _ in range(detail_h):
         out("")
-    if legend:
-        note(legend)
     firsts = [lbl.strip().lower()[:1] for _, lbl in items]
     by_letter = {c: i for i, c in enumerate(firsts) if firsts.count(c) == 1}
     shortcut = ("or press " + "/".join(sorted(by_letter))) if len(by_letter) == len(items) <= 3 \
@@ -411,10 +443,13 @@ def options(items: list[tuple[str, str]], per_row: int = 3, default_idx: int = 0
     hint = f"  {' ' * COL}{GREY}↑↓ to move · Enter to choose · {shortcut}{RESET}"
     out(hint)
 
+    block_h = len(rows) + 1 + detail_h + 1   # rows, a spacer, details, the hint
+
     def repaint(i):
-        paint("\033[F" * (len(rows) + detail_h + 1))
+        paint("\033[F" * block_h)
         for line in _option_rows(items, per_row, tags, i):
             paint(line + "\033[K\n")
+        paint("\033[K\n")                       # the spacer, kept clear
         body = _wrap_to_width(details.get(items[i][0], ""), COL + 2) if details else []
         for n in range(detail_h):
             txt = body[n] if n < len(body) else ""
@@ -447,6 +482,82 @@ def options(items: list[tuple[str, str]], per_row: int = 3, default_idx: int = 0
     paint("\033[F" + "\033[K")
     SILENCE.touch()
     return items[sel][0]
+
+
+def ruler(values, labels, captions, default_idx=0, unit="stops") -> float:
+    """A scale with a marker that slides along it. Returns the chosen value.
+
+    Density is the one choice in the walkthrough that is genuinely ORDERED --
+    less to more, with a meaningful middle. A grid of numbered options hides
+    that; a ruler shows it, and matches the preview sheet the reader has just
+    looked at, which lays the same five renders out left to right.
+    """
+    n = len(values)
+    sel = max(0, min(default_idx, n - 1))
+    # build the label row first, then hang the track off it, so ticks and
+    # marker line up by construction rather than by arithmetic that can drift
+    gap = "  "
+    starts, row = [], ""
+    for lb in labels:
+        starts.append(len(row) + len(lb) // 2)
+        row += lb + gap
+    row = row.rstrip()
+    pre, post = "denser ", " lighter"
+    kb = _keyboard()
+
+    if kb is None:
+        for i, (lb, cap) in enumerate(zip(labels, captions)):
+            out(f"  {' ' * COL}{AMBER}[{i + 1}]{RESET} {lb} {GREY}{cap}{RESET}")
+        while True:
+            ans = prompt(str(sel + 1))
+            if ans.isdigit() and 1 <= int(ans) <= n:
+                return values[int(ans) - 1]
+            note(f"type a number between 1 and {n}")
+
+    def lines(i):
+        track = ["─"] * len(row)
+        track[starts[i]] = "●"
+        t = "".join(track)
+        bar = (f"  {' ' * COL}{GREY}{pre}{RESET}{AMBER}{t[:starts[i]]}{RESET}"
+               f"{AMBER}{BOLD}●{RESET}{GREY}{t[starts[i] + 1:]}{RESET}{GREY}{post}{RESET}")
+        lab = f"  {' ' * COL}{' ' * len(pre)}{GREY}{row}{RESET}"
+        lab = (lab[:len(f"  {' ' * COL}{' ' * len(pre)}")] +
+               GREY + row[:starts[i] - len(labels[i]) // 2] + RESET +
+               AMBER + BOLD + labels[i] + RESET +
+               GREY + row[starts[i] - len(labels[i]) // 2 + len(labels[i]):] + RESET)
+        val = f"  {' ' * COL}{FG_NOTE}{values[i]:+.2f} {unit}{RESET}{GREY} · {captions[i]}{RESET}"
+        return [bar, lab, val]
+
+    for ln in lines(sel):
+        out(ln)
+    hint = f"  {' ' * COL}{GREY}← → to move · Enter to choose{RESET}"
+    out(hint)
+    with SILENCE.indicator():
+        while True:
+            key = _read_key(kb)
+            if key == "enter":
+                break
+            if key == "quit":
+                out(f"\n  {GREY}okay, stopping here. nothing was changed.{RESET}")
+                sys.exit(0)
+            if key == "up":
+                sel = max(0, sel - 1)
+            elif key == "down":
+                sel = min(n - 1, sel + 1)
+            elif key.isdigit() and 1 <= int(key) <= n:
+                sel = int(key) - 1
+            else:
+                continue
+            paint("\033[F" * 4)
+            for ln in lines(sel):
+                paint(ln + "\033[K\n")
+            paint(hint + "\033[K\n")
+    paint("\033[F" * 4)
+    for ln in lines(sel):
+        paint(ln + "\033[K\n")
+    paint("\033[K")
+    SILENCE.touch()
+    return values[sel]
 
 
 class Wedge:
@@ -882,22 +993,12 @@ def _run() -> int:
     cube = looksmod.cube_path(look)
     if not cube.exists():
         raise FileNotFoundError(str(cube))
-    receipt("film", f"{look.cube.split('_')[0]} · {AMBER}{look.status}{RESET}")
-    if borrowed == "other":
-        note("most Silbersalz rolls were Vision3 daylight stock, so this starts from the 250D proxy. tungsten film (200T/500T) would look blue with it — pick the stock if you can.")
-    elif borrowed:
-        base_name = dict(STOCK_CHOICES)[stock]
-        if borrowed == "125special":
-            note(f"no 125T pairs yet — borrowing the {base_name} LUT: also tungsten-balanced, but 125T 'Edition Vivid' is a Fuji stock,\n"
-                 "not Vision3, so expect a larger difference than between two Kodak stocks. real 125T pairs would replace it:\n"
-                 "https://github.com/atrouwee/saltgate")
-        else:
-            note(f"no {dict(STOCK_CHOICES)[borrowed]} pairs yet — borrowing the {base_name} LUT: same balance family, same scan encoding,\n"
-                 "so it is a fair first pass (daylight and tungsten stocks are 20+ ΔE apart; within a family it is ~3).\n"
-                 "real pairs of this stock would replace it. if you have any, please get in touch: https://github.com/atrouwee/saltgate")
+    receipt("film", f"{look.cube.split('_')[0]} · {AMBER}{look.status}{RESET}", "ok")
+    if borrowed:
+        note("if you have flat + graded pairs of this stock, they would replace the borrow: "
+             "https://github.com/atrouwee/saltgate")
     if len(candidates) > 1:
         note(f"{len(candidates)} versions of this look exist — the preview renders them side by side and you pick.")
-    note(look.note)
     out()
 
     # the film gate does not move between frames of one roll, so this is measured
@@ -1039,8 +1140,10 @@ def _run() -> int:
             sheet.save_sheet(sheet.build_sheet(lad_rows, tile_h=230), ladder, quality=85)
         open_file(ladder)
         note(f"opened · {short(ladder)}")
-        pick = options([(f"{dv}", f"{dv:+.2f}") for dv, _ in steps], default_idx=2)
-        density = float(pick)
+        density = ruler([dv for dv, _ in steps],
+                        [f"{dv:+.2f}" for dv, _ in steps],
+                        [tag or ("denser" if dv < 0 else "lighter" if dv > 0 else "") for dv, tag in steps],
+                        default_idx=2)
         receipt("density", f"{density:+.2f} stops for the whole roll", "ok")
         note("applied to every frame; the lab set it per roll too")
     else:

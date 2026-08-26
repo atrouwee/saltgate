@@ -27,3 +27,6 @@ __pycache__/
 *.egg-info/
 pairs_jxl/
 release/
+
+# JPEG copies of donor pairs superseded by JXL originals
+pairs_jpg_backup/
