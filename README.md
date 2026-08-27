@@ -40,7 +40,11 @@ curl -fsSL https://raw.githubusercontent.com/atrouwee/saltgate/main/install.sh |
 saltgate
 ```
 
-**3. Answer** — it asks where your scans are (drag the folder into the window), which film it was (it reads the lab's sidecar file when there is one), and whether to put the frames upright. It shows you a **preview of six frames** and only grades the whole roll after you say yes. The graded JPEGs (Display P3, original EXIF) land in a new folder next to your originals, `<your folder>_saltgate/`.
+**3. Answer** — the walkthrough guides you through everything, previewing on **your own frames** before anything is written:
+
+<p align="center"><img src="docs/examples/cli_walkthrough.png" width="760" alt="a SALTGATE walkthrough run: film detected from the lab's sidecar, frames put upright, three looks previewed, the film edge cropped, density optional, then the roll graded with a progress bar"></p>
+
+Most of it is automatic — it reads the film stock from the lab's own sidecar, puts sideways frames upright (and shows you the few it wasn't sure about, graded, at the end), crops the film rebate the way the lab did, centred on the film itself. You make the choices that are actually yours to make: which look fits this roll, how much film edge to keep, and — optionally — print density. The graded files (Display P3, original EXIF) land in a new folder next to your originals, which are never touched. **This walkthrough is how the maintainer grades his own rolls.**
 
 > Prefer to stay in your own editor? Every LUT is a standard `.cube`: [use it in Capture One, Resolve, Photoshop, Lightroom and others →](docs/USING_THE_LUTS.md)
 
