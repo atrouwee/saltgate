@@ -6,6 +6,13 @@ around them.
 
 Full technical history: `luts/CHANGELOG.md` for the LUTs themselves.
 
+## 0.3.2 — credit where it was owed
+Documentation only. The donors are now named in full — the footer had credited
+only two of the four; Sebastian and Lukas Walter, whose 250D pairs stand behind
+the default look itself, were missing. A dedicated callout says what each
+donation bought. And a short "How it was built" section states the ledger:
+ten hours of one photographer's judgement steering fifty hours of AI work.
+
 ## 0.3.1 — the walkthrough, shown
 Documentation only; nothing about your files changes. The README now opens the
 walkthrough with a picture of it — the guided flow, what's automatic and what's
