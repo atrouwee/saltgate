@@ -1,0 +1,18 @@
+{
+ "balance_anchors": {
+  "luma_p50_linear": 0.2903027784254566,
+  "p50_linear": [
+   0.28974008625630615,
+   0.2895962289328121,
+   0.2772006395535212
+  ]
+ },
+ "note": "differs from the default by median 1.07 dE2000 on the author's roll, all of it colour: -1.7 b* globally, most visible on large neutral fields",
+ "fidelity": {
+  "bare_lut": {
+   "median": 4.665
+  },
+  "n_frames_held_out": 22
+ },
+ "_note": "Shipping sidecar: balance anchors + headline fidelity. Full fit statistics are kept in the project's private research repo."
+}

@@ -1,6 +1,6 @@
 <h1 align="center">SALTGATE</h1>
 <p align="center"><b>Open tools for finishing flat SILBERSALZ scans — and preserving a colour workflow photographers love.</b></p>
-<p align="center"><i>The name is a wink. The work is sincere.</i></p>
+<p align="center"><i>We couldn’t ask the lab, so we asked the frames.</i></p>
 <p align="center">
   <a href="#finish-your-scans">Finish your scans</a> ·
   <a href="#which-films-and-how-close">Which films, how close</a> ·
@@ -8,7 +8,7 @@
   <a href="docs/HOW_IT_WORKS.md">How it works</a>
 </p>
 
-<p align="center"><img src="docs/examples/hero_250d_before_after.jpg" width="900" alt="lab flat scan and SALTGATE render, six Vision3 250D frames across daylight, overcast, indoor and tungsten light — proxy 250D LUT"></p>
+<p align="center"><img src="docs/examples/hero_250d_before_after.jpg" width="900" alt="lab flat scan and SALTGATE render, six Vision3 250D frames across daylight, overcast and tungsten light — pair-fitted 250D default"></p>
 
 SALTGATE is an independent community project built with appreciation for what SILBERSALZ brought to still photography: motion-picture film, ECN-2 processing, exceptionally detailed scans, and a distinctive approach to colour.
 
@@ -26,7 +26,7 @@ This project is the constructive answer. We take the lab's raw scans and the gra
 
 ## Finish your scans
 
-Three questions, one preview, done. No technical knowledge needed; your originals are never modified.
+It asks, it shows you, it grades — previews on your own frames before anything is written. No technical knowledge needed; your originals are never modified.
 
 **1. Install** — open *Terminal* (Mac) and paste:
 

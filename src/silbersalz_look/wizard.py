@@ -33,11 +33,12 @@ STOCK_CHOICES = [("250d", "Vision3 250D"), ("50d", "Vision3 50D"), ("200t", "Vis
 # one donor so far) · proxy (no pairs — a stand-in estimated from the author's graded archive). Vision3 stocks
 # without their own LUT borrow the 250D proxy: same negative family, same scan encoding. Gold (C-41) is a
 # different curve and never borrows.
-READINESS = {"PROXY": "proxy", "BETA": "beta", "VALIDATED": "validated"}
+READINESS = {"PROXY": "proxy", "BETA": "beta", "VALIDATED": "validated", "HYBRID": "hybrid"}
 BORROWS = {"200t": "500t", "125special": "500t", "other": "250d"}   # borrow within the balance family: tungsten ← 500T, daylight ← 250D
 READINESS_LEGEND = ("validated = fitted on real flat + graded pairs and checked on rolls it never saw · "
                     "beta = fitted on real pairs, one donor so far\n"
                     "proxy = no pairs yet, a stand-in estimated from the author's ~700 graded lab scans · "
+                    "hybrid = the default cooled toward the author's graded archive by a measured no-cost amount · "
                     "(250D) / (500T) = borrows that stock's LUT — same balance family; daylight ↔ tungsten measured 20+ ΔE apart · more pairs, less guesswork")
 
 
@@ -657,6 +658,7 @@ class GradeProgress:
 
     def __init__(self, total: int):
         self.total, self.done, self.detail = max(total, 1), 0, "starting"
+        self.crop_summary = ""
         self._w = None
         self._lock = threading.Lock()
 
@@ -675,6 +677,8 @@ class GradeProgress:
                 self.detail = f"frame {label}"
                 if self._w is not None:
                     self._w.step(detail=self.detail)
+        elif msg.startswith("[crop]"):
+            self.crop_summary = msg[len("[crop] "):].strip()
         elif msg.startswith("[apply]"):
             with self._lock:
                 self.detail = "starting the workers"
@@ -997,7 +1001,7 @@ def _run() -> int:
     out()
     out(f"  {AMBER}░▒▓█{RESET}  {BOLD}SALTGATE{RESET}{' ' * 44}{GREY}v{__version__}{RESET}")
     out(f"        finish your flat SILBERSALZ scans")
-    out(f"        {GREY}the name is a wink · the work is sincere{RESET}")
+    out(f"        {GREY}we couldn’t ask the lab, so we asked the frames{RESET}")
     out()
     # the slow part of starting up (loading image libraries, checking for updates)
     # happens behind a status line so the window is never silent. The label has to
@@ -1191,6 +1195,73 @@ def _run() -> int:
         note("remembered for next time")
         out()
 
+    # ◆ edge — a flat scan is the whole film strip: picture, unexposed rebate and
+    # sprocket holes. The lab cropped that away before grading (measured across
+    # 40 APOLLON deliveries: their borders sit at L* 6, an uncropped grade at
+    # L* 77-96, because the grade lifts unexposed film toward white).
+    #
+    # The crop is CENTRED ON THE FILM, not on the scan: 35mm rarely sits square
+    # on the strip. On roll 26.18_077 every frame carried ~2.4% of dark border
+    # on one side and none on the other, so a crop that is symmetric about the
+    # scan leaves a bar down one edge -- which is what it looked like before
+    # rebate.centering_shift went in.
+    crop_edge = 0.015
+    receipt("edge", "your scan is the whole film strip — picture, rebate and sprockets")
+    # preview the three treatments on the photographer's own frames, exactly as
+    # the look choice previews the LUTs -- numbered to match the options below
+    with step("rendering the edge choices on your frames"):
+        _edge_rows = []
+        for f in picks[:2]:
+            a = imgio.read_image(f, max_px=900).rgb          # whole scan, uncropped
+            if rebate.looks_blank(a):
+                continue
+            r_full = np.clip(lutmod.apply_trilinear(lattice_of(look), a), 0, 1)
+            if rotations:
+                r_full = orient_mod.apply_rotation(r_full, rotations[f.name]["k"])
+            tiles = []
+            for lbl, g in (("[1] just outside", 0.015), ("[2] film edge", 0.0), ("[3] whole scan", None)):
+                if g is None:
+                    tiles.append((r_full, lbl, None))
+                    continue
+                box = rebate.detect_image_area_fractions(r_full)
+                if box is None:
+                    tiles.append((r_full, lbl + " (no edge found)", None))
+                    continue
+                bx, by, bw, bh = box
+                bx, by, bw, bh = bx + g, by + g, bw - 2 * g, bh - 2 * g
+                H2, W2 = r_full.shape[:2]
+                y0, y1 = max(0, int(by * H2)), min(H2, int((by + bh) * H2))
+                x0, x1 = max(0, int(bx * W2)), min(W2, int((bx + bw) * W2))
+                c = r_full[y0:y1, x0:x1]
+                dy, dx = rebate.centering_shift(c)
+                if dy or dx and 0 <= y0 + dy and y1 + dy <= H2 and 0 <= x0 + dx and x1 + dx <= W2:
+                    c = r_full[y0 + dy:y1 + dy, x0 + dx:x1 + dx]
+                tiles.append((c, lbl, None))
+            _edge_rows.append({"title": f.name, "tiles": tiles})
+            if len(_edge_rows) >= 2:
+                break
+        if _edge_rows:
+            sheet.save_sheet(sheet.build_sheet(_edge_rows, tile_h=260), out_dir / "edge-preview.jpg", quality=85)
+    if _edge_rows:
+        open_file(out_dir / "edge-preview.jpg")
+    edge_choice = options([("just", "just outside the frame"),
+                           ("gate", "show the film edge"),
+                           ("none", "keep the whole scan")],
+                          default_idx=0, per_row=3,
+                          legend="whichever you pick, the crop is centred on the film itself — "
+                                 "35mm rarely sits square on the strip",
+                          details={"just": "the rounded corners your camera's gate leaves, and a sliver "
+                                           "of film. closest to what the lab delivered.",
+                                   "gate": "more of the strip, sprocket holes visible. unexposed film "
+                                           "renders bright here, brighter than a lab scan shows it.",
+                                   "none": "no crop at all — the scan exactly as the lab sent it, "
+                                           "rebate and all. crop it yourself later."})
+    crop_edge = {"just": 0.015, "gate": 0.0, "none": None}[edge_choice]
+    receipt("edge", {"just": "cropped just outside the frame",
+                     "gate": "film edge kept",
+                     "none": "whole scan kept"}[edge_choice], "ok")
+    out()
+
     # ◆ format — only asked when the input carries more than 8 bits.
     # Writing 8-bit out of a 16-bit scan re-imposes the same 2.2 dE the lab's own
     # gallery jpeg costs, which is larger than the colour error still left in the
@@ -1307,7 +1378,8 @@ def _run() -> int:
     def bulk() -> None:
         try:
             ap.grade_folder(folder, out_dir, cube, balance_mode="off", resume=True, rotations=rotations,
-                            limit=limit, density=density, bits=bits, log=prog.log)
+                            limit=limit, density=density, bits=bits, crop_edge=crop_edge,
+                            log=prog.log)
         except Exception as exc:                     # surfaced on the main thread below
             failure["e"] = exc
 
@@ -1342,6 +1414,9 @@ def _run() -> int:
         out()
         return 1
 
+    if getattr(prog, "crop_summary", ""):
+        note(prog.crop_summary)
+
     # corrections collected during the review, applied now the originals are free
     if turns:
         from . import imgio as _imgio
@@ -1364,7 +1439,7 @@ def _run() -> int:
     if rotations:
         (out_dir / "rotations.json").write_text(json.dumps(rotations, indent=1))
     (out_dir / "saltgate.json").write_text(json.dumps({"source": str(folder), "lut": str(cube), "stock": stock,
-                                                      "look": look.key, "density": density, "bits": bits, "film": borrowed or stock,
+                                                      "look": look.key, "density": density, "bits": bits, "edge": edge_choice, "film": borrowed or stock,
                                                       "rotated": bool(rotations)}, indent=1))
 
     # ◆ done

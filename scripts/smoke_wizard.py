@@ -17,7 +17,7 @@ for i in range(4):
     inner = 0.55 + 0.25 * rng.random((h - 60, w - 60, 3)).astype(np.float32)  # milky flat content
     inner = np.clip(inner + rng.normal(0, 0.01, inner.shape), 0, 1); img[30:-30, 30:-30] = inner
     Image.fromarray((img * 255).astype(np.uint8)).save(scans / f"26.00_000_00000G_{i+1:04d}-0004.jpg", quality=92)
-answers = f"{scans}\n1\nn\n1\nn\ny\n"   # folder · 250D · no rotation · first look · no density · grade
+answers = f"{scans}\n1\nn\n1\n1\nn\ny\n"   # folder · 250D · no rotation · look · edge · no density · grade
 env = dict(os.environ, PYTHONPATH=str(Path(__file__).resolve().parents[1] / "src"),
            SALTGATE_NO_OPEN="1", SALTGATE_NO_UPDATE="1", HOME=str(tmp))
 r = subprocess.run([sys.executable, "-c", "from silbersalz_look.cli import main; raise SystemExit(main([]))"],
@@ -29,7 +29,7 @@ ok = (r.returncode == 0 and out.exists() and len(list(out.glob("26.*.jpg"))) == 
       # every optional step must be reachable AND skippable: the look choice and
       # the per-roll density both land in saltgate.json, so a step that silently
       # stopped appearing would fail here rather than in someone's terminal
-      and state.exists() and {"look", "density", "bits"} <= set(json.loads(state.read_text())))
+      and state.exists() and {"look", "density", "bits", "edge"} <= set(json.loads(state.read_text())))
 print(r.stdout[-1500:]); print(r.stderr[-800:])
 print("SMOKE", "OK" if ok else "FAILED")
 sys.exit(0 if ok else 1)

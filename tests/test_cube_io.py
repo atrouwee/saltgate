@@ -63,3 +63,22 @@ def test_trilinear_matches_interpn():
     for c in range(3):
         ref = RegularGridInterpolator((ax, ax, ax), lattice[..., c])(rgb)
         assert np.allclose(ours[:, c], ref, atol=1e-5)
+
+
+
+def test_blend_lattices_endpoints_and_identity():
+    """blend(a,b,0)==a, blend(a,b,1)==b, blend(L,L,any)==L — the sweep's axioms."""
+    import numpy as np
+    from silbersalz_look import lut
+    rng = np.random.default_rng(7)
+    a = rng.random((9, 9, 9, 3), dtype=np.float32)
+    b = rng.random((9, 9, 9, 3), dtype=np.float32)
+    assert np.allclose(lut.blend_lattices(a, b, 0.0), a, atol=1e-7)
+    assert np.allclose(lut.blend_lattices(a, b, 1.0), b, atol=1e-7)
+    for al in (0.0, 0.3, 1.0):
+        assert np.allclose(lut.blend_lattices(a, a, al), a, atol=1e-7)
+    mid = lut.blend_lattices(a, b, 0.5)
+    assert np.allclose(mid, (a + b) / 2, atol=1e-6)
+    import pytest
+    with pytest.raises(ValueError):
+        lut.blend_lattices(a, b[:5], 0.5)

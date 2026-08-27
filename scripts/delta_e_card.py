@@ -122,11 +122,11 @@ def main():
 
     G, T, D = ("silbersalz-gold200_v1-paired_33.stats.json",
                "silbersalz-500t_v1.1-paired_33.stats.json",
-               "silbersalz-250d_v2-paired_33.stats.json")
+               "silbersalz-250d_v4-jxl_33.stats.json")
     rows = [
         ("kodak gold 200", held(G), "· within roll", f"{held(G,'by_roll')} across rolls", "27 pairs · 2 rolls", True),
         ("vision3 500t", held(T), "", "one roll so far", "5 pairs · 1 roll", True),
-        ("vision3 250d", held(D), "", f"{held(D,'by_roll')} across rolls · 2 donors", "22 pairs · 4 rolls · 2 photographers", True),
+        ("vision3 250d", held(D), "", f"{held(D,'by_roll')} across rolls · 2 donors", "22 pairs · 4 rolls · 2 photographers · 16-bit", True),
         ("vision3 50d", "—", "", "no pairs yet", "102 graded frames (proxy)", False),
         ("200t · 125t", "—", "", "borrows 500t", "no pairs of their own yet", False),
     ]
@@ -167,7 +167,7 @@ def main():
     d.line([M_X, y, W - M_X, y], fill=LINE, width=2)
     y += 40
     d.rectangle([M_X, y + 6, M_X + 22, y + 28], fill=AMBER_DIM)
-    d.text((M_X + 34, y), "the name is a wink \u00b7 the work is sincere", font=footer, fill=DIM)
+    d.text((M_X + 34, y), "we couldn\u2019t ask the lab, so we asked the frames", font=footer, fill=DIM)
 
     img.save(out, "PNG")
     print(f"wrote {out} ({img.size[0]}x{img.size[1]})")

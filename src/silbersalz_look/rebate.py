@@ -110,6 +110,62 @@ def roll_area_fractions(
     return med
 
 
+def detect_image_area_fractions(rgb: np.ndarray) -> tuple[float, float, float, float] | None:
+    """detect_image_area as fractions of the frame, or None if it misfires.
+
+    Fractions travel between resolutions, so a box found on a preview can be
+    applied to the full-resolution frame. A detection covering less than half
+    the frame on either axis is a misfire (a large soft shadow can do this) and
+    returns None so the caller can fall back rather than crop a third of the
+    picture away.
+    """
+    h, w = rgb.shape[:2]
+    x, y, bw, bh = detect_image_area(rgb)
+    if bw < 0.5 * w or bh < 0.5 * h:
+        return None
+    return x / w, y / h, bw / w, bh / h
+
+
+def dark_margins(rgb: np.ndarray) -> tuple[int, int, int, int]:
+    """(top, bottom, left, right) thickness of the dark film border, in pixels.
+
+    Walks each edge inward while the line's median stays far below the picture's
+    own core, so it measures the unexposed rebate rather than a dark subject.
+    """
+    from . import color as _color
+
+    L = _color.p3_codes_to_lab(np.clip(rgb, 0, 1).astype(np.float64))[..., 0]
+    h, w = L.shape
+    core = float(np.median(L[h // 3:2 * h // 3, w // 3:2 * w // 3]))
+    thr = max(12.0, core * 0.35)
+
+    def run(get, n):
+        k = 0
+        while k < n // 3 and float(np.median(get(k))) < thr:
+            k += 1
+        return k
+
+    return (run(lambda i: L[i], h), run(lambda i: L[h - 1 - i], h),
+            run(lambda i: L[:, i], w), run(lambda i: L[:, w - 1 - i], w))
+
+
+def centering_shift(rgb: np.ndarray, limit_frac: float = 0.06) -> tuple[int, int]:
+    """(dy, dx) to move a crop window so the dark border is even on both sides.
+
+    detect_image_area's box sits slightly off the picture on one axis -- measured
+    on roll 26.18_077, every frame carried ~2.4% of dark border on one side and
+    none on the other (the left on portrait frames, the bottom on landscape:
+    the same film edge, rotated). Shifting by half the imbalance evens it
+    without changing the crop's size. Bounded, so a misread cannot slide the
+    window off the picture.
+    """
+    t, b, l, r = dark_margins(rgb)
+    h, w = rgb.shape[:2]
+    dy = int(np.clip((t - b) // 2, -limit_frac * h, limit_frac * h))
+    dx = int(np.clip((l - r) // 2, -limit_frac * w, limit_frac * w))
+    return dy, dx
+
+
 def crop_to_area(rgb: np.ndarray, frac: tuple[float, float, float, float]) -> np.ndarray:
     x, y, w, h = fractions_to_area(frac, rgb.shape)
     return rgb[y : y + h, x : x + w]

@@ -6,6 +6,27 @@ around them.
 
 Full technical history: `luts/CHANGELOG.md` for the LUTs themselves.
 
+## 0.3.0 — the film edge, cropped like the lab did · **renders change**
+Your graded frames are now **cropped** by default — just outside the picture,
+keeping the camera gate's rounded corners and a sliver of film. The lab did
+the same before grading: an uncropped grade renders the unexposed rebate near
+white (L\* 77–96 measured, against the lab's own L\* 6 borders). The walkthrough
+previews all three treatments on your own frames — just outside · film edge ·
+whole scan — and whichever you pick, the crop is **centred on the film itself**:
+35 mm rarely sits square on the strip, so a scan-centred crop leaves a dark bar
+down one edge. After grading it reports what happened ("88 cropped, 61
+re-centred, 5 left whole"). Choose *whole scan* and nothing is cropped at all.
+
+A third 250D look joins the picker: **cooled hybrid** — the default with its
+colour cooled toward the maintainer's 668-frame graded archive, the amount set
+by measurement rather than by eye. Same fidelity to the 22 real pairs as the
+default; about 1 ΔE apart, all colour. The archive-matched look's description
+now carries its exact provenance: 668 frames, 16 rolls, Sep 2022–Mar 2026, all
+APOLLON-era; 180 frames on a Canonet QL17, 488 on a Contax T2.
+
+Also: a new hero image rendered with the shipped default, and a new line under
+the name — *we couldn't ask the lab, so we asked the frames.*
+
 ## 0.2.1 — check the frames it wasn't sure about
 Auto-rotation is right about 95% of the time, and it knows which frames it is
 unsure of: on a test roll, five of the six it got wrong were among the six it
