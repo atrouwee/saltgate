@@ -73,6 +73,14 @@ LOOKS: dict[str, list[Look]] = {
         # no scene favours v1, so it is superseded, not an alternative. Older
         # release zips still carry it for anyone re-grading an old project.
     ],
+    "colorplus200": [
+        Look("v1", "v1", "silbersalz-colorplus200_v1-paired_33.cube", "BETA",
+             "fitted from 13 real flat/graded pairs (one donor, one roll -- Cairo, Jan 2026, "
+             "PUSHED +2 stops, so this describes pushed ColorPlus under the lab's grade). "
+             "held-out frames median dE 4.9; black point matches the lab at L* 4.1. "
+             "a normal-dev roll would likely trip the mismatch check -- honestly, since "
+             "no normal-dev pairs exist yet."),
+    ],
     "gold200": [
         Look("v1", "v1", "silbersalz-gold200_v1-paired_33.cube", "BETA",
              "fitted from 27 real flat/graded pairs (one donor, two rolls). close to the lab "

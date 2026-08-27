@@ -1,3 +1,3 @@
 """saltgate: open tools for finishing flat SILBERSALZ scans."""
 
-__version__ = "0.3.2"
+__version__ = "0.4.0"

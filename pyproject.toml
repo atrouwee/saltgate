@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "saltgate"
-version = "0.3.2"
+version = "0.4.0"
 description = "SALTGATE: open tools for finishing flat SILBERSALZ scans and preserving a colour workflow photographers love (LUTs, batch grading, pair fitting)."
 readme = "README.md"
 license = { text = "MIT" }
@@ -34,7 +34,7 @@ saltgate = "silbersalz_look.cli:main"
 where = ["src"]
 
 [tool.setuptools.package-data]
-silbersalz_look = ["models/*.onnx", "models/*.npz", "luts/*.cube", "luts/*.json"]
+silbersalz_look = ["models/*.onnx", "models/*.npz", "luts/*.cube", "luts/*.json", "data/*.json"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

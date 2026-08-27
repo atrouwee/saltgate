@@ -61,6 +61,7 @@ Fidelity is stated as the ΔE2000 of the *bare LUT* against the lab's own graded
 | Stock | LUT | Status | Evidence |
 |---|---|---|---|
 | **Kodak Gold 200** (C-41) | `silbersalz-gold200_v1-paired_33.cube` | **Beta** — 27 pairs, one donor, two rolls (thanks Cody) | held out a whole roll at a time: median ΔE2000 **4.1** (p90 4.7). The roll-to-roll gap is per-roll density the LUT can't know — more rolls and donors will close it |
+| **Kodak ColorPlus 200** (C-41, pushed +2) | `silbersalz-colorplus200_v1-paired_33.cube` | **Beta** — 13 pairs, one donor, one roll (thanks [@_.cherrymy](https://instagram.com/_.cherrymy)) | frame-level holdout median ΔE2000 **4.9** (p90 10.6); black point matches the lab at L\* 4.1. The roll was **pushed +2 stops**, so this LUT describes pushed ColorPlus under the lab's grade — a normal-dev roll will differ, and the walkthrough's mismatch check will say so |
 | **Vision3 500T** | `silbersalz-500t_v1.1-paired_33.cube` | **Beta** — 5 pairs, one donor, one roll (thanks Faraz) | frame-level holdout median ΔE2000 **1.5** (p90 6.1; one frame where the lab lifted black by ~0.04); training residual ≤1.1 in every band; black point within 0.1 L\*. Needs a second roll to become *validated* |
 | **Vision3 250D** | `silbersalz-250d_v4-jxl_33.cube` | **Beta** — 22 pairs, two donors, four rolls (thanks Sebastian and Lukas Walter) | held out a whole roll at a time: median ΔE2000 **7.9**, a *cross-donor* figure. Give every frame its own exposure and it lands at **0.8** — the pairs are now the lab's own JXL originals rather than re-encoded JPEG, so that number is no longer measured through a compression floor. Training residuals: skin 0.7, shadows 0.9, no band above 1.9. What remains between rolls is density, which no LUT can know — nudge exposure to taste |
 | Vision3 250D — archive-matched | `silbersalz-250d_v0.1-statistical_33.cube` | **Proxy** — the alternative | the pre-pairs stand-in, estimated from ~700 of the author's own graded frames. It has no ground truth behind it, but it renders ~10 b\* cooler and ~10 L\* darker than the pair fit, and on the author's own rolls that reads closer. Which is right for a given roll is not measurable without pairs from it, so both ship and the walkthrough asks |
@@ -113,12 +114,13 @@ SALTGATE would not exist without the work of the people who created SILBERSALZ35
 
 This project is our way of taking that influence seriously: studying it carefully, crediting its source, and helping the resulting photographs survive an uncertain moment.
 
-**And it runs on donated pairs.** Every fidelity number in this README exists because four photographers sent in flat and graded scans of the same frames:
+**And it runs on donated pairs.** Every fidelity number in this README exists because five photographers sent in flat and graded scans of the same frames:
 
 - **Sebastian** — the first 250D pairs, when there was nothing to measure against
 - **Lukas Walter** ([@lukas.onfilm](https://instagram.com/lukas.onfilm)) — 16 250D pairs, later re-sent as the lab's own 16-bit originals, which removed a compression floor from every measurement
 - **Cody** — 27 Gold 200 pairs across two rolls
 - **Faraz** — the 500T pairs
+- **[@_.cherrymy](https://instagram.com/_.cherrymy)** — 13 ColorPlus 200 pairs from a Cairo roll, the first C-41 consumer stock donation after Gold — and the roll that taught the walkthrough to check for stock mismatches
 
 Their images are never published — a credit is not permission to republish someone's photographs — only the measurements are. If you have pairs of your own, [you can move a whole film stock from *proxy* to *measured*](#have-flat-and-graded-scans-of-the-same-frames-get-in-touch).
 
