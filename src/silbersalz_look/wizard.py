@@ -27,7 +27,8 @@ from . import looks as looksmod
 # the full per-stock list lives in looks.py.
 LUTS = {s: (v[0].cube, v[0].status, v[0].note) for s, v in looksmod.LOOKS.items()}
 STOCK_CHOICES = [("250d", "Vision3 250D"), ("50d", "Vision3 50D"), ("200t", "Vision3 200T"),
-                 ("500t", "Vision3 500T"), ("gold200", "Kodak Gold 200"), ("125special", "125T Special"),
+                 ("500t", "Vision3 500T"), ("gold200", "Kodak Gold 200"),
+                 ("colorplus200", "Kodak ColorPlus 200"), ("125special", "125T Special"),
                  ("other", "something else / I don't know")]
 # readiness, derived from LUTS: validated (real pairs, checked on rolls the fit never saw) · beta (real pairs,
 # one donor so far) · proxy (no pairs — a stand-in estimated from the author's graded archive). Vision3 stocks
@@ -1276,6 +1277,25 @@ def _run() -> int:
             note("writing 8-bit JPEG instead")
         else:
             note("16-bit TIFF, Display P3, one file per frame")
+        out()
+
+    # ◆ base check — does this roll behave like the pairs the look came from?
+    # The film base itself cannot tell us: the lab normalised every roll's
+    # scan, so rebate density carries no fingerprint (measured -- FINDINGS).
+    # The graded shadows can: a wrong stock or a pushed/pulled roll lands
+    # 1.8-2.8x outside the pairs' shadow-chromaticity envelope, an honest
+    # roll 0.3-0.5x -- even a summer roll against a winter envelope.
+    if stock not in BORROWS:
+        from . import stock_check as scheck
+        with step("checking the roll against the look's pairs"):
+            verdict = scheck.check(files, lattice_of(look), stock)
+        if verdict and not verdict["ok"]:
+            receipt("check", f"this roll sits {verdict['ratio']:.1f}x outside the pairs behind this look", "warn")
+            note("that usually means a pushed or pulled roll, or a different film stock\n"
+                 "than selected. the density step below can partly compensate density;\n"
+                 "colour drift it cannot -- the grade may land far from the lab's.")
+        elif verdict:
+            receipt("check", "the roll behaves like the pairs this look was measured from", "ok")
         out()
 
     # ◆ density — optional, and skipped by a single Enter.

@@ -6,6 +6,22 @@ around them.
 
 Full technical history: `luts/CHANGELOG.md` for the LUTs themselves.
 
+## 0.4.0 — a new stock, and a tripwire — **renders change**
+Two things, both born from one donation. **Kodak ColorPlus 200 joins the
+stocks** — 13 flat/graded pairs of a Cairo roll (thanks @_.cherrymy) were
+enough to fit a first LUT: held-out frames land within ΔE 4.9 of the lab's own
+grade, the same class as the 250D default. Honesty in full: one roll, one
+donor, and the roll was pushed +2 stops, so this is *pushed* ColorPlus under
+the lab's grade — a normal-dev roll will differ.
+
+And the walkthrough now **checks your roll against the pairs behind the look**
+before the density step. The donation arrived labelled as a different stock,
+and the engine caught it only because we went looking — now the tool looks
+every time. Wrong stock or a pushed/pulled roll measures 2–3× outside the
+look's envelope and gets a plain warning; honest rolls pass with room to
+spare. (The film base itself can't tell — the lab normalised every scan; we
+measured that too, and the dead end is recorded in FINDINGS.)
+
 ## 0.3.2 — credit where it was owed
 Documentation only. The donors are now named in full — the footer had credited
 only two of the four; Sebastian and Lukas Walter, whose 250D pairs stand behind

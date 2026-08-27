@@ -208,3 +208,32 @@ def looks_blank(rgb: np.ndarray) -> bool:
 
 def is_content_frame(rgb: np.ndarray) -> bool:
     return not (looks_blank(rgb) or looks_like_info_card(rgb))
+
+
+def base_estimate(rgb: np.ndarray) -> np.ndarray | None:
+    """Median P3 code of the film base, from the thin clear band between the
+    picture area and the sprocket row. Measurement utility only: base density
+    SHOULD fingerprint stock and push/pull, but the lab normalised each
+    roll's scan, so in these deliverables it does not (within-stock roll
+    medians span 10 L* / 8 b* -- as wide as between stocks; see FINDINGS).
+    The working mismatch guard is stock_check.py. Returns None when no
+    picture box is found or the band is degenerate."""
+    box = detect_image_area_fractions(rgb)
+    if box is None:
+        return None
+    bx, by, bw, bh = box
+    h, w = rgb.shape[:2]
+    y0, y1 = round(by * h), round((by + bh) * h)
+    x0, x1 = round(bx * w), round((bx + bw) * w)
+    band = max(2, round(0.012 * h))
+    strips = []
+    if y0 - band >= 0:
+        strips.append(rgb[max(0, y0 - band):y0, x0:x1])
+    if y1 + band <= h:
+        strips.append(rgb[y1:min(h, y1 + band), x0:x1])
+    if not strips:
+        return None
+    px = np.concatenate([s.reshape(-1, 3) for s in strips])
+    if len(px) < 200:
+        return None
+    return np.median(px, axis=0)
