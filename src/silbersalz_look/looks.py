@@ -39,16 +39,24 @@ LOOKS: dict[str, list[Look]] = {
              "the DEFAULT since v0.2.0. fitted from 22 real flat/graded pairs, two "
              "photographers, four rolls -- the only 250D LUT measured against what the lab "
              "actually returned rather than inferred from finished frames. against that "
-             "ground truth it is by far the closer of the two. caveat worth knowing: 16 of "
+             "ground truth it is by far the closest look here. caveat worth knowing: 16 of "
              "the 22 pairs are a single roll, and on the author's own rolls it renders "
              "warmer and lighter than the archive-matched LUT. which is right for YOUR roll "
              "is not something anyone can measure without pairs from it."),
+        Look("hybrid", "cooled hybrid", "silbersalz-250d_hybrid-cool_33.cube", "HYBRID",
+             "the default with its colour cooled toward the author's 668-frame graded archive, the "
+             "amount set by measurement rather than by eye. the tone is untouched, and it holds the "
+             "same fidelity to the 22 real pairs as the default. the difference is deliberate and "
+             "small: about 1 dE, all of it colour, most visible as cooler large neutral fields -- "
+             "skies, walls, fabric. pick it if the default reads a touch warm on your roll; the two "
+             "are siblings, not rivals."),
         Look("proxy", "archive-matched", "silbersalz-250d_v0.1-statistical_33.cube", "PROXY",
-             "what shipped as the default up to v0.1.26. estimated from ~700 of the "
-             "author's own lab-graded 250D frames rather than measured from pairs, so it "
-             "carries that archive's cameras, light and choices with it. cooler and darker "
-             "than the pair fit. no ground truth stands behind it -- but if the pair fit "
-             "reads too warm on your roll, this is the alternative to reach for."),
+             "what shipped as the default up to v0.1.26. estimated from 668 of the author's own "
+             "lab-graded 250D frames -- 16 rolls, Sep 2022 to Mar 2026, all APOLLON-era deliveries, "
+             "shot on two bodies: 180 frames on a Canonet QL17, 488 on a Contax T2 -- rather than "
+             "measured from pairs, so it carries that archive's cameras, light and subjects with "
+             "it. renders cooler and darker than both looks above. no ground truth stands behind "
+             "it, but if the pair-fitted looks read too warm on your roll, this is the alternative."),
     ],
     "50d": [
         Look("proxy", "proxy", "silbersalz-50d_v0-statistical_33.cube", "PROXY",

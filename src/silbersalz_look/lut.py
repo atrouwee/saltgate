@@ -20,6 +20,19 @@ def identity_lattice(n: int = 33) -> np.ndarray:
     return np.stack([r, g, b], axis=-1)
 
 
+def blend_lattices(a: np.ndarray, b: np.ndarray, alpha: float) -> np.ndarray:
+    """(1-alpha)*a + alpha*b, elementwise.
+
+    Valid because every lattice in this project shares domain and codomain:
+    P3 codes in [0,1] on both sides, same shape, same dtype. The blend of two
+    monotone-ish grades can still introduce local kinks; anything shipping a
+    blended cube should look at it against smooth_lattice first.
+    """
+    if a.shape != b.shape:
+        raise ValueError(f"lattice shapes differ: {a.shape} vs {b.shape}")
+    return ((1.0 - alpha) * a.astype(np.float64) + alpha * b.astype(np.float64)).astype(np.float32)
+
+
 def apply_trilinear(lattice: np.ndarray, rgb: np.ndarray) -> np.ndarray:
     """Apply a (N,N,N,3) lattice to rgb in [0,1], any leading shape."""
     n = lattice.shape[0]
