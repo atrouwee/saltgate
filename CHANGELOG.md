@@ -6,6 +6,12 @@ around them.
 
 Full technical history: `luts/CHANGELOG.md` for the LUTs themselves.
 
+## 0.3.1 — the walkthrough, shown
+Documentation only; nothing about your files changes. The README now opens the
+walkthrough with a picture of it — the guided flow, what's automatic and what's
+yours to choose — and says plainly that it is how the maintainer grades his own
+rolls. New hero image rendered with the shipped default.
+
 ## 0.3.0 — the film edge, cropped like the lab did · **renders change**
 Your graded frames are now **cropped** by default — just outside the picture,
 keeping the camera gate's rounded corners and a sliver of film. The lab did
