@@ -113,12 +113,25 @@ SALTGATE would not exist without the work of the people who created SILBERSALZ35
 
 This project is our way of taking that influence seriously: studying it carefully, crediting its source, and helping the resulting photographs survive an uncertain moment.
 
+**And it runs on donated pairs.** Every fidelity number in this README exists because four photographers sent in flat and graded scans of the same frames:
+
+- **Sebastian** — the first 250D pairs, when there was nothing to measure against
+- **Lukas Walter** ([@lukas.onfilm](https://instagram.com/lukas.onfilm)) — 16 250D pairs, later re-sent as the lab's own 16-bit originals, which removed a compression floor from every measurement
+- **Cody** — 27 Gold 200 pairs across two rolls
+- **Faraz** — the 500T pairs
+
+Their images are never published — a credit is not permission to republish someone's photographs — only the measurements are. If you have pairs of your own, [you can move a whole film stock from *proxy* to *measured*](#have-flat-and-graded-scans-of-the-same-frames-get-in-touch).
+
+## How it was built
+
+In six days of August 2026, by one photographer and an AI working together — and the ledger is worth being transparent about. The human side: **481 messages, roughly ten hours of judgement** — choosing the look in blinded sittings, catching a colour bug and a crop bug the numbers missed, and every call of taste. The AI side: **~50 hours of work** — 2.7 billion tokens of context read, 8 million written, 156 commits, four releases, and ten-odd CPU-hours of grading, fitting and rendering on a single Mac. Every measurement came from the machine; every judgement that couldn't be measured came from a person. The mistakes that mattered most were caught by eye.
+
 ## Independence, privacy, trademark, license
 
 What changed between versions: [`CHANGELOG.md`](CHANGELOG.md).
 
 Auto-rotation uses a ResNet-50 backbone from torchvision (BSD-3-Clause, trained on ImageNet-1K) and the YuNet face detector from OpenCV Zoo — provenance and licences in [`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md).
 
-Built by Adriaan Trouwee with the Silbersalz community. Pairs: Cody (Gold 200), Faraz (500T) — donated images are never published; pair identifiers in the shipped statistics are anonymised. Independent of and unaffiliated with SILBERSALZ Film GmbH; "SILBERSALZ" and "SILBERSALZ35" are the lab's names, used here descriptively. The LUTs contain no image content. Code and LUTs: **MIT**.
+Built by Adriaan Trouwee with the Silbersalz community. Pairs: Sebastian and Lukas Walter (250D), Cody (Gold 200), Faraz (500T) — donated images are never published; pair identifiers in the shipped statistics are anonymised. Independent of and unaffiliated with SILBERSALZ Film GmbH; "SILBERSALZ" and "SILBERSALZ35" are the lab's names, used here descriptively. The LUTs contain no image content. Code and LUTs: **MIT**.
 
 How it works: [docs/HOW_IT_WORKS.md](docs/HOW_IT_WORKS.md) · how close the results are, and what donated pairs measurably buy: [docs/DELTA_E.md](docs/DELTA_E.md) · using the LUTs in your own editor: [docs/USING_THE_LUTS.md](docs/USING_THE_LUTS.md). A dated timeline of what happened at the lab, and what its deliveries looked like era by era, kept separate on purpose: [docs/CONTEXT.md](docs/CONTEXT.md).
