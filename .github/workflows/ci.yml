@@ -7,18 +7,41 @@ on:
 jobs:
   test:
     strategy:
-      matrix: { os: [macos-latest, ubuntu-latest] }
+      # Windows is in this matrix because the people who install this are
+      # photographers, not developers, and the first thing a Windows user
+      # reported was that the command did not exist. Nothing that only ever ran
+      # on a Mac can be claimed to work for them.
+      matrix: { os: [macos-latest, ubuntu-latest, windows-latest] }
     runs-on: ${{ matrix.os }}
+    defaults:
+      run: { shell: bash }        # one set of steps for three operating systems
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
       - name: install like a user (installer path, from this checkout)
-        run: |
-          uv tool install --python 3.12 "saltgate[dev] @ ."
-          saltgate --help
+        run: uv tool install --python 3.12 "saltgate[dev] @ ."
+      - name: put the tool on PATH (what `uv tool update-shell` does for a user)
+        run: echo "$(uv tool dir --bin 2>/dev/null || echo "$HOME/.local/bin")" >> "$GITHUB_PATH"
+      - name: the command a user types exists
+        run: saltgate --help
       - name: unit tests
-        run: |
-          uv venv --python 3.12 .venv && uv pip install --python .venv/bin/python -e ".[dev]"
-          .venv/bin/python -m pytest -q
+        run: uv run --python 3.12 --extra dev pytest -q
       - name: wizard smoke test (non-interactive, synthetic scans)
-        run: .venv/bin/python scripts/smoke_wizard.py
+        run: uv run --python 3.12 --extra dev python scripts/smoke_wizard.py
+      - name: the same walkthrough, through the installed command
+        # the grade runs in a ProcessPoolExecutor and Windows spawns its workers
+        # instead of forking them, so the console script has to survive being
+        # re-entered -- which only this path exercises
+        env: { SALTGATE_SMOKE_CMD: saltgate }
+        run: uv run --python 3.12 --extra dev python scripts/smoke_wizard.py
+      - name: the Windows installer itself installs a working command
+        # the file a Windows user pipes into PowerShell, run end to end against
+        # this checkout. Nothing else here proves that script is even valid.
+        if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          SALTGATE_SPEC: saltgate @ .
+          SALTGATE_NO_MODEL: '1'      # 47 MB the walkthrough re-offers anyway
+        run: |
+          ./install.ps1
+          saltgate --help

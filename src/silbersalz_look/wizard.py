@@ -320,18 +320,49 @@ def _keyboard():
     CI, anyone scripting the walkthrough) must keep working exactly as before,
     so arrow keys are an enhancement for people at a keyboard and never a
     requirement.
+
+    Windows has no termios; it reads keys through msvcrt instead. That is not a
+    cosmetic difference: `None` here also switches OFF the rotation review, so
+    returning it on Windows quietly took away the one question the tool cannot
+    answer for itself.
     """
     if not (sys.stdin.isatty() and interactive()):
         return None
+    if os.name == "nt":
+        try:
+            import msvcrt
+        except ImportError:                 # pragma: no cover - Windows only
+            return None
+        return msvcrt
     try:
         import termios, tty  # noqa: F401
     except ImportError:
-        return None          # Windows: fall back to typing a number
+        return None
     return termios
 
 
-def _read_key(termios) -> str:
+def _read_key_nt(msvcrt) -> str:
+    r"""One keypress on Windows. Same vocabulary as the POSIX reader.
+
+    Arrows arrive as two reads: a \x00 or \xe0 lead byte and then a letter,
+    where POSIX sends an escape sequence. Left/right are folded into up/down
+    exactly as they are there, so a wide row of options walks sideways.
+    """
+    ch = msvcrt.getwch()
+    if ch in ("\x00", "\xe0"):
+        return {"H": "up", "P": "down", "K": "up", "M": "down"}.get(msvcrt.getwch(), "")
+    if ch in ("\r", "\n"):
+        return "enter"
+    if ch in ("\x03", "\x04", "\x1b", "q"):   # ctrl-c, ctrl-d, Esc, q
+        return "quit"
+    return ch
+
+
+def _read_key(kb) -> str:
     """One keypress -> 'up' | 'down' | 'enter' | 'quit' | a single character."""
+    if getattr(kb, "__name__", "") == "msvcrt":
+        return _read_key_nt(kb)
+    termios = kb
     import tty
     fd = sys.stdin.fileno()
     saved = termios.tcgetattr(fd)
@@ -350,6 +381,29 @@ def _read_key(termios) -> str:
         return ch
     finally:
         termios.tcsetattr(fd, termios.TCSADRAIN, saved)
+
+
+def enable_ansi() -> None:
+    """Let the receipt render on Windows instead of printing its escape codes.
+
+    Every line this walkthrough draws is ANSI: the amber ◆, the density wedge,
+    the cursor moves the option list redraws with. Windows Terminal understands
+    them; the older console host that still opens for `cmd.exe` only does once
+    ENABLE_VIRTUAL_TERMINAL_PROCESSING is set on the handle. No-op elsewhere.
+    """
+    if os.name != "nt":
+        return
+    try:                                        # pragma: no cover - Windows only
+        import ctypes
+
+        kernel32 = ctypes.windll.kernel32
+        for std in (-11, -12):                  # stdout, stderr
+            handle = kernel32.GetStdHandle(std)
+            mode = ctypes.c_uint32()
+            if kernel32.GetConsoleMode(handle, ctypes.byref(mode)):
+                kernel32.SetConsoleMode(handle, mode.value | 0x0004)
+    except Exception:
+        pass
 
 
 def _fit_per_row(items, tags, per_row: int) -> int:
@@ -733,6 +787,44 @@ def review_turns(hard, prog) -> dict:
     return turns
 
 
+def stay_awake():
+    """Keep the machine awake for the length of the grade. Returns a release().
+
+    A roll is 40 minutes of work with nobody touching the keyboard, so the
+    display sleeping mid-run used to suspend it. macOS gets `caffeinate`, tied
+    to this pid so it cannot outlive us; Windows says the same thing to the
+    power manager directly. Anywhere else, and on any failure, grading simply
+    goes ahead unprotected -- this is a courtesy, never a precondition.
+    """
+    if sys.platform == "darwin":
+        try:
+            proc = subprocess.Popen(["caffeinate", "-i", "-w", str(os.getpid())])
+        except Exception:
+            return lambda: None
+        return proc.terminate
+    if os.name == "nt":
+        try:                                    # pragma: no cover - Windows only
+            import ctypes
+
+            ES_CONTINUOUS, ES_SYSTEM_REQUIRED = 0x80000000, 0x00000001
+            if not ctypes.windll.kernel32.SetThreadExecutionState(ES_CONTINUOUS | ES_SYSTEM_REQUIRED):
+                return lambda: None
+            return lambda: ctypes.windll.kernel32.SetThreadExecutionState(ES_CONTINUOUS)
+        except Exception:
+            return lambda: None
+    return lambda: None
+
+
+def file_manager() -> str:
+    """The app the reader drags the folder out of."""
+    return {"darwin": "Finder", "win32": "File Explorer"}.get(sys.platform, "your file manager")
+
+
+def machine_word() -> str:
+    """What to call the computer in a sentence the reader is looking at."""
+    return {"darwin": "Mac", "win32": "PC"}.get(sys.platform, "computer")
+
+
 def open_file(path: Path) -> None:
     if os.environ.get("SALTGATE_NO_OPEN"):
         return
@@ -749,12 +841,22 @@ def open_file(path: Path) -> None:
 
 # ── helpers ───────────────────────────────────────────────────────────────
 def clean_path(raw: str) -> Path:
-    return Path(os.path.expanduser(raw.strip().strip("'\"").replace("\\ ", " ")))
+    """A dragged-in or pasted folder, however the shell dressed it up.
+
+    Dropping a folder on a terminal quotes it (Explorer's "copy as path" does
+    too) and a POSIX shell escapes the spaces with backslashes. On Windows the
+    backslash is the separator, so unescaping there would eat the path -- and
+    "C:\\Users\\me\\ scans" is a real folder name.
+    """
+    raw = raw.strip().strip("'\"")
+    if os.name != "nt":
+        raw = raw.replace("\\ ", " ")
+    return Path(os.path.expanduser(raw))
 
 
 def short(path: Path, keep: int = 3) -> str:
     parts = path.parts
-    return str(path) if len(parts) <= keep + 1 else "…/" + "/".join(parts[-keep:])
+    return str(path) if len(parts) <= keep + 1 else "…" + os.sep + os.sep.join(parts[-keep:])
 
 
 def log_dir() -> Path:
@@ -818,12 +920,26 @@ def quiet_libraries() -> None:
 
 
 GIT_SPEC = "saltgate @ git+https://github.com/atrouwee/saltgate.git"
+# Windows machines usually have no git at all, and `git+` cannot install without
+# one. GitHub serves the same tree as a zip, which uv installs from just as
+# happily -- so a missing git costs the commit pin, not the update.
+ZIP_SPEC = "saltgate @ https://github.com/atrouwee/saltgate/archive/refs/heads/main.zip"
+
+
+def install_spec() -> str:
+    import shutil
+    return GIT_SPEC if shutil.which("git") else ZIP_SPEC
 
 
 def _uv() -> str | None:
     import shutil
-    uv = shutil.which("uv") or str(Path.home() / ".local/bin/uv")
-    return uv if Path(uv).exists() else None
+    uv = shutil.which("uv")
+    if uv:
+        return uv
+    for candidate in (Path.home() / ".local/bin/uv.exe", Path.home() / ".local/bin/uv"):
+        if candidate.exists():
+            return str(candidate)
+    return None
 
 
 def _in_uv_tool() -> bool:
@@ -865,7 +981,7 @@ def _apply_update(latest: str) -> None:
     # rotation needed it, so an update cannot take their rotation away before
     # they have fetched the ONNX. Drop once the release asset has been live a while.
     extras = ["--with", "torch", "--with", "torchvision"] if importlib.util.find_spec("torch") else []
-    proc = subprocess.Popen([uv, "tool", "install", "--force", "--python", "3.12", *extras, GIT_SPEC],
+    proc = subprocess.Popen([uv, "tool", "install", "--force", "--python", "3.12", *extras, install_spec()],
                             stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     spinner_while(proc, "updating")
     text = proc.stdout.read() if proc.stdout else ""
@@ -880,6 +996,13 @@ def _apply_update(latest: str) -> None:
     # it came from, so it can say "updated" instead of silently replaying the
     # banner and a checking-for-updates line it is not actually running
     env = dict(os.environ, SALTGATE_NO_UPDATE="1", SALTGATE_UPDATED_FROM=__version__)
+    if os.name == "nt":
+        # Windows has execve, but it detaches: the shell takes its prompt back
+        # while the relaunched walkthrough is still writing to the same window,
+        # and the first prompt is then answered by nobody. Run it as a child and
+        # exit with its status -- the same handover, made honest.
+        sys.exit(subprocess.run([sys.executable, "-m", "silbersalz_look.cli", *sys.argv[1:]],
+                                env=env).returncode)
     os.execve(sys.argv[0], [sys.argv[0]] + sys.argv[1:], env)
 
 
@@ -978,6 +1101,7 @@ def ensure_orientation() -> bool:
 # ── the walkthrough ───────────────────────────────────────────────────────
 def run() -> int:
     """Entry point with a safety net: never show a traceback, always save one."""
+    enable_ansi()
     try:
         return _run()
     except KeyboardInterrupt:
@@ -1027,7 +1151,7 @@ def _run() -> int:
         if folder.is_file():
             note("that's a single file — drag the whole folder that contains your scans"); continue
         if not folder.is_dir():
-            note("I can't find a folder there — try dragging it from Finder"); continue
+            note(f"I can't find a folder there — try dragging it from {file_manager()}"); continue
         gradeable = lambda d: [f for f in imgio.list_images(d) if f.suffix.lower() in imgio.GRADEABLE_EXTS]
         with step(f"looking through {folder.name}"):
             files = gradeable(folder)
@@ -1352,7 +1476,7 @@ def _run() -> int:
         return 1
     batch = 20
     if todo > batch:
-        how = options([("all", f"all {todo} frames now (the Mac is kept awake)"),
+        how = options([("all", f"all {todo} frames now (the {machine_word()} is kept awake)"),
                        ("batch", f"a first batch of {batch} (~{max(1, round(batch * SECONDS_PER_FRAME / 60))} min), continue later"),
                        ("stop", "not now — keep the preview only")], per_row=1)
     else:
@@ -1386,12 +1510,7 @@ def _run() -> int:
         out()
 
     prog = GradeProgress(n_run)
-    keep_awake = None
-    if sys.platform == "darwin":
-        try:
-            keep_awake = subprocess.Popen(["caffeinate", "-i", "-w", str(os.getpid())])
-        except Exception:
-            keep_awake = None
+    keep_awake = stay_awake()
 
     failure = {}
 
@@ -1422,8 +1541,7 @@ def _run() -> int:
         prog.attach(None)
         w.close()
         out(); out()          # the bar and its detail line are not a receipt's neighbours
-        if keep_awake is not None:
-            keep_awake.terminate()
+        keep_awake()
     if "e" in failure:
         e = failure["e"]
         write_log("grading", repr(e))

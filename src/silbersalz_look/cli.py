@@ -117,6 +117,9 @@ def _has_research() -> bool:
 
 
 def main(argv=None) -> int:
+    from .wizard import enable_ansi
+
+    enable_ansi()     # Windows: the spinners and the receipt are ANSI too
     argv = sys.argv[1:] if argv is None else argv
     if not argv or argv == ["wizard"]:
         from . import wizard
