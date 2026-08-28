@@ -24,7 +24,7 @@ def test_axis_order_against_hand_computed_2cube(tmp_path):
     lut.write_cube(p, lattice, "id2")
     data_lines = [
         l
-        for l in p.read_text().splitlines()
+        for l in p.read_text(encoding="utf-8").splitlines()
         if l and not l.startswith(("#", "TITLE", "LUT", "DOMAIN"))
     ]
     expect = [

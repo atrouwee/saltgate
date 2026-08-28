@@ -36,7 +36,7 @@ def test_config_that_is_not_an_object_reads_as_empty(cfg):
 
 def test_round_trip(cfg):
     wizard.remember_look("250d", "paired")
-    assert json.loads(cfg.read_text()) == {"looks": {"250d": "paired"}}
+    assert json.loads(cfg.read_text(encoding="utf-8")) == {"looks": {"250d": "paired"}}
     assert wizard.remembered_look("250d") == "paired"
 
 
@@ -47,7 +47,7 @@ def test_remembering_one_stock_leaves_the_others_alone(cfg):
 
 
 def test_a_remembered_key_for_a_retired_lut_is_ignored(cfg):
-    cfg.write_text(json.dumps({"looks": {"250d": "some-lut-we-removed"}}))
+    cfg.write_text(json.dumps({"looks": {"250d": "some-lut-we-removed"}}), encoding="utf-8")
     assert wizard.remembered_look("250d") is None
 
 

@@ -83,7 +83,7 @@ def _cmd_apply(args) -> int:
             limit=args.limit,
             density=args.density,
             bits=args.bits,
-            rotations=(__import__("json").loads(Path(args.rotations).read_text()) if args.rotations else None),
+            rotations=(__import__("json").loads(Path(args.rotations).read_text(encoding="utf-8")) if args.rotations else None),
             log=log,
         )
     finally:
@@ -117,6 +117,9 @@ def _has_research() -> bool:
 
 
 def main(argv=None) -> int:
+    from .wizard import prepare_console
+
+    prepare_console()   # Windows: the spinners and the receipt need this too
     argv = sys.argv[1:] if argv is None else argv
     if not argv or argv == ["wizard"]:
         from . import wizard

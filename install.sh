@@ -3,7 +3,7 @@
 #   curl -fsSL https://raw.githubusercontent.com/atrouwee/saltgate/main/install.sh | sh
 # Installs uv (a small Python tool manager) if needed, then the `saltgate` command with its own Python.
 set -e
-echo "SALTGATE installer — the name is a wink, the work is sincere."
+echo "SALTGATE — we couldn't ask the lab, so we asked the frames."
 if ! command -v uv >/dev/null 2>&1; then
   echo "Installing uv (Python tool manager)…"
   curl -LsSf https://astral.sh/uv/install.sh | sh

@@ -23,11 +23,35 @@ PEAK_GB_PER_WORKER = 1.1
 
 
 def ram_gb() -> float:
-    try:
-        import subprocess
+    """Installed RAM in GB, or a conservative 8 if the machine won't say.
 
-        out = subprocess.run(["sysctl", "-n", "hw.memsize"], capture_output=True, text=True)
-        return int(out.stdout.strip()) / 1073741824
+    This is not trivia: default_workers() divides it, so the macOS-only `sysctl`
+    this used to be meant every Windows and Linux machine fell back to 8 GB and
+    graded on exactly ONE worker, however much memory it actually had. A 32 GB
+    PC was running a roll at a quarter speed for no reason.
+    """
+    try:
+        if sys.platform == "darwin":
+            import subprocess
+
+            out = subprocess.run(["sysctl", "-n", "hw.memsize"], capture_output=True, text=True)
+            return int(out.stdout.strip()) / 1073741824
+        if os.name == "nt":
+            import ctypes
+
+            class _MemoryStatusEx(ctypes.Structure):
+                _fields_ = [("dwLength", ctypes.c_uint32), ("dwMemoryLoad", ctypes.c_uint32),
+                            ("ullTotalPhys", ctypes.c_uint64), ("ullAvailPhys", ctypes.c_uint64),
+                            ("ullTotalPageFile", ctypes.c_uint64), ("ullAvailPageFile", ctypes.c_uint64),
+                            ("ullTotalVirtual", ctypes.c_uint64), ("ullAvailVirtual", ctypes.c_uint64),
+                            ("ullAvailExtendedVirtual", ctypes.c_uint64)]
+
+            status = _MemoryStatusEx()
+            status.dwLength = ctypes.sizeof(_MemoryStatusEx)
+            if not ctypes.windll.kernel32.GlobalMemoryStatusEx(ctypes.byref(status)):
+                return 8.0
+            return status.ullTotalPhys / 1073741824
+        return (os.sysconf("SC_PAGE_SIZE") * os.sysconf("SC_PHYS_PAGES")) / 1073741824
     except Exception:
         return 8.0
 

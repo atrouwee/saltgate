@@ -28,17 +28,35 @@ This project is the constructive answer. We take the lab's raw scans and the gra
 
 It asks, it shows you, it grades — previews on your own frames before anything is written. No technical knowledge needed; your originals are never modified.
 
-**1. Install** — open *Terminal* (Mac) and paste:
+**1. Install** — on a **Mac** (or Linux), open *Terminal* and paste:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/atrouwee/saltgate/main/install.sh | sh
 ```
 
-**2. Run** — open a new Terminal window and type:
+On **Windows**, open *PowerShell* (Start menu → type "PowerShell") and paste this one instead:
+
+```powershell
+powershell -ExecutionPolicy Bypass -c "irm https://raw.githubusercontent.com/atrouwee/saltgate/main/install.ps1 | iex"
+```
+
+**2. Run** — open a **new** terminal window and type:
 
 ```bash
 saltgate
 ```
+
+<details><summary><b>"saltgate is not recognised" / "command not found"</b></summary>
+
+Both installers put the `saltgate` command in a folder your terminal only reads when it *starts*, so the window you installed in will never see it. Close that window and open a fresh one.
+
+If a new window still doesn't find it, run the command by its full path — this always works, and tells us the install itself was fine:
+
+- Windows: `%USERPROFILE%\.local\bin\saltgate.exe`
+- Mac / Linux: `~/.local/bin/saltgate`
+
+And on Windows, make sure step 1 was the PowerShell line: the Mac line above needs `curl` and `sh`, neither of which Windows has, so pasting it there fails with *"sh is not recognized"* and nothing gets installed. If anything else goes wrong, [open an issue](../../issues) — the version and platform are in the first line of every log file saltgate writes.
+</details>
 
 **3. Answer** — the walkthrough guides you through everything, previewing on **your own frames** before anything is written:
 

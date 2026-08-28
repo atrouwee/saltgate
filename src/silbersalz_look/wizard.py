@@ -320,18 +320,49 @@ def _keyboard():
     CI, anyone scripting the walkthrough) must keep working exactly as before,
     so arrow keys are an enhancement for people at a keyboard and never a
     requirement.
+
+    Windows has no termios; it reads keys through msvcrt instead. That is not a
+    cosmetic difference: `None` here also switches OFF the rotation review, so
+    returning it on Windows quietly took away the one question the tool cannot
+    answer for itself.
     """
     if not (sys.stdin.isatty() and interactive()):
         return None
+    if os.name == "nt":
+        try:
+            import msvcrt
+        except ImportError:                 # pragma: no cover - Windows only
+            return None
+        return msvcrt
     try:
         import termios, tty  # noqa: F401
     except ImportError:
-        return None          # Windows: fall back to typing a number
+        return None
     return termios
 
 
-def _read_key(termios) -> str:
+def _read_key_nt(msvcrt) -> str:
+    r"""One keypress on Windows. Same vocabulary as the POSIX reader.
+
+    Arrows arrive as two reads: a \x00 or \xe0 lead byte and then a letter,
+    where POSIX sends an escape sequence. Left/right are folded into up/down
+    exactly as they are there, so a wide row of options walks sideways.
+    """
+    ch = msvcrt.getwch()
+    if ch in ("\x00", "\xe0"):
+        return {"H": "up", "P": "down", "K": "up", "M": "down"}.get(msvcrt.getwch(), "")
+    if ch in ("\r", "\n"):
+        return "enter"
+    if ch in ("\x03", "\x04", "\x1b", "q"):   # ctrl-c, ctrl-d, Esc, q
+        return "quit"
+    return ch
+
+
+def _read_key(kb) -> str:
     """One keypress -> 'up' | 'down' | 'enter' | 'quit' | a single character."""
+    if getattr(kb, "__name__", "") == "msvcrt":
+        return _read_key_nt(kb)
+    termios = kb
     import tty
     fd = sys.stdin.fileno()
     saved = termios.tcgetattr(fd)
@@ -350,6 +381,44 @@ def _read_key(termios) -> str:
         return ch
     finally:
         termios.tcsetattr(fd, termios.TCSADRAIN, saved)
+
+
+def prepare_console() -> None:
+    """Make a Windows console able to print this walkthrough. No-op elsewhere.
+
+    Two separate problems, both fatal to the receipt and neither one visible on
+    a Mac:
+
+    * the escape codes. Every line here is ANSI -- the amber ◆, the density
+      wedge, the cursor moves the option list redraws with. Windows Terminal
+      understands them; the older console host that still opens for `cmd.exe`
+      only does once ENABLE_VIRTUAL_TERMINAL_PROCESSING is set on the handle.
+    * the glyphs. Attached to a console, Python writes wide characters and
+      ░▒▓█ arrive fine -- but REDIRECT that output to a pipe or a file and it
+      falls back to the machine's legacy code page, where those characters do
+      not exist, and the banner raises UnicodeEncodeError before the
+      walkthrough has said a word. `saltgate > log.txt` is a reasonable thing
+      for someone to do when reporting a problem.
+    """
+    if os.name != "nt":
+        return
+    try:                                        # pragma: no cover - Windows only
+        for stream in (sys.stdout, sys.stderr):
+            if hasattr(stream, "reconfigure"):
+                stream.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+    try:                                        # pragma: no cover - Windows only
+        import ctypes
+
+        kernel32 = ctypes.windll.kernel32
+        for std in (-11, -12):                  # stdout, stderr
+            handle = kernel32.GetStdHandle(std)
+            mode = ctypes.c_uint32()
+            if kernel32.GetConsoleMode(handle, ctypes.byref(mode)):
+                kernel32.SetConsoleMode(handle, mode.value | 0x0004)
+    except Exception:
+        pass
 
 
 def _fit_per_row(items, tags, per_row: int) -> int:
@@ -733,6 +802,44 @@ def review_turns(hard, prog) -> dict:
     return turns
 
 
+def stay_awake():
+    """Keep the machine awake for the length of the grade. Returns a release().
+
+    A roll is 40 minutes of work with nobody touching the keyboard, so the
+    display sleeping mid-run used to suspend it. macOS gets `caffeinate`, tied
+    to this pid so it cannot outlive us; Windows says the same thing to the
+    power manager directly. Anywhere else, and on any failure, grading simply
+    goes ahead unprotected -- this is a courtesy, never a precondition.
+    """
+    if sys.platform == "darwin":
+        try:
+            proc = subprocess.Popen(["caffeinate", "-i", "-w", str(os.getpid())])
+        except Exception:
+            return lambda: None
+        return proc.terminate
+    if os.name == "nt":
+        try:                                    # pragma: no cover - Windows only
+            import ctypes
+
+            ES_CONTINUOUS, ES_SYSTEM_REQUIRED = 0x80000000, 0x00000001
+            if not ctypes.windll.kernel32.SetThreadExecutionState(ES_CONTINUOUS | ES_SYSTEM_REQUIRED):
+                return lambda: None
+            return lambda: ctypes.windll.kernel32.SetThreadExecutionState(ES_CONTINUOUS)
+        except Exception:
+            return lambda: None
+    return lambda: None
+
+
+def file_manager() -> str:
+    """The app the reader drags the folder out of."""
+    return {"darwin": "Finder", "win32": "File Explorer"}.get(sys.platform, "your file manager")
+
+
+def machine_word() -> str:
+    """What to call the computer in a sentence the reader is looking at."""
+    return {"darwin": "Mac", "win32": "PC"}.get(sys.platform, "computer")
+
+
 def open_file(path: Path) -> None:
     if os.environ.get("SALTGATE_NO_OPEN"):
         return
@@ -749,12 +856,22 @@ def open_file(path: Path) -> None:
 
 # ── helpers ───────────────────────────────────────────────────────────────
 def clean_path(raw: str) -> Path:
-    return Path(os.path.expanduser(raw.strip().strip("'\"").replace("\\ ", " ")))
+    """A dragged-in or pasted folder, however the shell dressed it up.
+
+    Dropping a folder on a terminal quotes it (Explorer's "copy as path" does
+    too) and a POSIX shell escapes the spaces with backslashes. On Windows the
+    backslash is the separator, so unescaping there would eat the path -- and
+    "C:\\Users\\me\\ scans" is a real folder name.
+    """
+    raw = raw.strip().strip("'\"")
+    if os.name != "nt":
+        raw = raw.replace("\\ ", " ")
+    return Path(os.path.expanduser(raw))
 
 
 def short(path: Path, keep: int = 3) -> str:
     parts = path.parts
-    return str(path) if len(parts) <= keep + 1 else "…/" + "/".join(parts[-keep:])
+    return str(path) if len(parts) <= keep + 1 else "…" + os.sep + os.sep.join(parts[-keep:])
 
 
 def log_dir() -> Path:
@@ -772,7 +889,7 @@ def config_path() -> Path:
 def load_config() -> dict:
     """Never raises. A corrupt or unreadable config must not stop someone grading."""
     try:
-        d = json.loads(config_path().read_text())
+        d = json.loads(config_path().read_text(encoding="utf-8"))
         return d if isinstance(d, dict) else {}
     except Exception:
         return {}
@@ -782,7 +899,7 @@ def save_config(cfg: dict) -> None:
     try:
         p = config_path()
         p.parent.mkdir(parents=True, exist_ok=True)
-        p.write_text(json.dumps(cfg, indent=1))
+        p.write_text(json.dumps(cfg, indent=1), encoding="utf-8")
     except Exception:
         pass   # a preference is a convenience; failing to store it is not an error
 
@@ -801,7 +918,12 @@ def remember_look(stock: str, key: str) -> None:
 def write_log(kind: str, text: str) -> Path:
     from . import __version__
     p = log_dir() / f"{kind}-{time.strftime('%Y%m%d-%H%M%S')}.log"
-    p.write_text(f"saltgate {__version__} · python {sys.version.split()[0]} · {sys.platform}\n\n{text}")
+    # utf-8 is not optional here: the traceback being logged quotes source lines
+    # out of this very file, ░▒▓█ and all, and this runs INSIDE the error
+    # handler -- a second exception here would replace the plain-sentence
+    # apology with the raw traceback the safety net exists to prevent.
+    p.write_text(f"saltgate {__version__} · python {sys.version.split()[0]} · {sys.platform}\n\n{text}",
+                 encoding="utf-8")
     return p
 
 
@@ -818,12 +940,26 @@ def quiet_libraries() -> None:
 
 
 GIT_SPEC = "saltgate @ git+https://github.com/atrouwee/saltgate.git"
+# Windows machines usually have no git at all, and `git+` cannot install without
+# one. GitHub serves the same tree as a zip, which uv installs from just as
+# happily -- so a missing git costs the commit pin, not the update.
+ZIP_SPEC = "saltgate @ https://github.com/atrouwee/saltgate/archive/refs/heads/main.zip"
+
+
+def install_spec() -> str:
+    import shutil
+    return GIT_SPEC if shutil.which("git") else ZIP_SPEC
 
 
 def _uv() -> str | None:
     import shutil
-    uv = shutil.which("uv") or str(Path.home() / ".local/bin/uv")
-    return uv if Path(uv).exists() else None
+    uv = shutil.which("uv")
+    if uv:
+        return uv
+    for candidate in (Path.home() / ".local/bin/uv.exe", Path.home() / ".local/bin/uv"):
+        if candidate.exists():
+            return str(candidate)
+    return None
 
 
 def _in_uv_tool() -> bool:
@@ -865,7 +1001,7 @@ def _apply_update(latest: str) -> None:
     # rotation needed it, so an update cannot take their rotation away before
     # they have fetched the ONNX. Drop once the release asset has been live a while.
     extras = ["--with", "torch", "--with", "torchvision"] if importlib.util.find_spec("torch") else []
-    proc = subprocess.Popen([uv, "tool", "install", "--force", "--python", "3.12", *extras, GIT_SPEC],
+    proc = subprocess.Popen([uv, "tool", "install", "--force", "--python", "3.12", *extras, install_spec()],
                             stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     spinner_while(proc, "updating")
     text = proc.stdout.read() if proc.stdout else ""
@@ -880,6 +1016,13 @@ def _apply_update(latest: str) -> None:
     # it came from, so it can say "updated" instead of silently replaying the
     # banner and a checking-for-updates line it is not actually running
     env = dict(os.environ, SALTGATE_NO_UPDATE="1", SALTGATE_UPDATED_FROM=__version__)
+    if os.name == "nt":
+        # Windows has execve, but it detaches: the shell takes its prompt back
+        # while the relaunched walkthrough is still writing to the same window,
+        # and the first prompt is then answered by nobody. Run it as a child and
+        # exit with its status -- the same handover, made honest.
+        sys.exit(subprocess.run([sys.executable, "-m", "silbersalz_look.cli", *sys.argv[1:]],
+                                env=env).returncode)
     os.execve(sys.argv[0], [sys.argv[0]] + sys.argv[1:], env)
 
 
@@ -904,14 +1047,20 @@ def detect_stock_from_sidecars(folder: Path) -> str | None:
     for d in (folder, folder.parent):
         for js in d.glob("*Exported.json"):
             try:
-                code = str(json.loads(js.read_text()).get("Film_1_Stock", "")).strip()
+                code = str(json.loads(js.read_text(encoding="utf-8")).get("Film_1_Stock", "")).strip()
                 if code in LAB_STOCK_CODES:
                     return LAB_STOCK_CODES[code]
             except Exception:
                 pass
         info = d / "info.txt"
         if info.exists():
-            t = info.read_text().lower()
+            # someone else's file, in someone else's encoding: the stock codes
+            # we look for are ASCII, so a byte we cannot decode is not a reason
+            # to give up on the card -- or to end the walkthrough
+            try:
+                t = info.read_text(encoding="utf-8", errors="replace").lower()
+            except OSError:
+                continue
             for key in ("250d", "50d", "200t", "500t", "125"):
                 if key in t:
                     return "125special" if key == "125" else key
@@ -978,6 +1127,7 @@ def ensure_orientation() -> bool:
 # ── the walkthrough ───────────────────────────────────────────────────────
 def run() -> int:
     """Entry point with a safety net: never show a traceback, always save one."""
+    prepare_console()
     try:
         return _run()
     except KeyboardInterrupt:
@@ -1027,7 +1177,7 @@ def _run() -> int:
         if folder.is_file():
             note("that's a single file — drag the whole folder that contains your scans"); continue
         if not folder.is_dir():
-            note("I can't find a folder there — try dragging it from Finder"); continue
+            note(f"I can't find a folder there — try dragging it from {file_manager()}"); continue
         gradeable = lambda d: [f for f in imgio.list_images(d) if f.suffix.lower() in imgio.GRADEABLE_EXTS]
         with step(f"looking through {folder.name}"):
             files = gradeable(folder)
@@ -1403,11 +1553,22 @@ def _run() -> int:
         blacks_sheet = out_dir / "blacks.jpg"
         sheet.save_sheet(sheet.build_sheet(lad, tile_h=230), blacks_sheet, quality=85)
         open_file(blacks_sheet)
-        note(f"{len(cand)} frames flagged · opened {short(blacks_sheet)} — each at three depths\n"
-             "on the donated rolls the lab pressed frames like these by 0.05–0.10")
-        mode = options([("frame", "choose per frame"), ("roll", "one depth for the whole roll"),
-                        ("skip", "leave as rendered")], default_idx=0, per_row=3)
-        if mode == "roll":
+        note(f"{len(cand)} of {len(files)} frames flagged · opened {short(blacks_sheet)} — each at three depths\n"
+             "it is only ever a handful (never more than 8, most rolls flag none) and one\n"
+             "keypress covers them all · on the donated rolls the lab pressed frames like\n"
+             "these by 0.05–0.10")
+        mode = options([("auto", "press them for me"), ("frame", "choose per frame"),
+                        ("roll", "one depth for the whole roll"), ("skip", "leave as rendered")],
+                       default_idx=0, per_row=2)
+        if mode == "auto":
+            # the flagger earned this default: on every donated roll it marks
+            # exactly the frames the lab pressed and nothing else. -0.05 is
+            # half of what the lab typically did (-0.08..-0.11) -- the safe
+            # half; review per frame to go deeper.
+            for _, f, _a in cand:
+                frame_black[f.name] = -0.05
+            receipt("blacks", f"{len(cand)} flagged frames pressed -0.05 · review per frame to go deeper", "ok")
+        elif mode == "roll":
             black = ruler([0.0, -0.02, -0.05, -0.10], ["0", "-0.02", "-0.05", "-0.10"],
                           ["as rendered", "", "pressed", "deep"], default_idx=0, unit="black")
             receipt("blacks", f"{black:+.2f} on every frame", "ok")
@@ -1440,7 +1601,7 @@ def _run() -> int:
         return 1
     batch = 20
     if todo > batch:
-        how = options([("all", f"all {todo} frames now (the Mac is kept awake)"),
+        how = options([("all", f"all {todo} frames now (the {machine_word()} is kept awake)"),
                        ("batch", f"a first batch of {batch} (~{max(1, round(batch * SECONDS_PER_FRAME / 60))} min), continue later"),
                        ("stop", "not now — keep the preview only")], per_row=1)
     else:
@@ -1474,12 +1635,7 @@ def _run() -> int:
         out()
 
     prog = GradeProgress(n_run)
-    keep_awake = None
-    if sys.platform == "darwin":
-        try:
-            keep_awake = subprocess.Popen(["caffeinate", "-i", "-w", str(os.getpid())])
-        except Exception:
-            keep_awake = None
+    keep_awake = stay_awake()
 
     failure = {}
 
@@ -1511,8 +1667,7 @@ def _run() -> int:
         prog.attach(None)
         w.close()
         out(); out()          # the bar and its detail line are not a receipt's neighbours
-        if keep_awake is not None:
-            keep_awake.terminate()
+        keep_awake()
     if "e" in failure:
         e = failure["e"]
         write_log("grading", repr(e))
@@ -1546,11 +1701,11 @@ def _run() -> int:
         out()
 
     if rotations:
-        (out_dir / "rotations.json").write_text(json.dumps(rotations, indent=1))
+        (out_dir / "rotations.json").write_text(json.dumps(rotations, indent=1), encoding="utf-8")
     (out_dir / "saltgate.json").write_text(json.dumps({"source": str(folder), "lut": str(cube), "stock": stock,
                                                       "look": look.key, "density": density, "bits": bits, "edge": edge_choice, "film": borrowed or stock,
                                                       "black": black, "frame_black": frame_black,
-                                                      "rotated": bool(rotations)}, indent=1))
+                                                      "rotated": bool(rotations)}, indent=1), encoding="utf-8")
 
     # ◆ done
     remaining = len([f for f in files if not (out_dir / f.name).exists()])
@@ -1578,8 +1733,8 @@ def fix_rotation(args: list[str]) -> int:
     if not state_path.exists():
         receipt("stopped", "that folder wasn't made by the walkthrough (no saltgate.json inside)", "err"); return 1
     SILENCE.start()
-    state = json.loads(state_path.read_text()); rot_path = out_dir / "rotations.json"
-    rotations = json.loads(rot_path.read_text()) if rot_path.exists() else {}
+    state = json.loads(state_path.read_text(encoding="utf-8")); rot_path = out_dir / "rotations.json"
+    rotations = json.loads(rot_path.read_text(encoding="utf-8")) if rot_path.exists() else {}
     from . import apply as ap, lut as lutmod, imgio
     src = Path(state["source"])
     with step("loading the look and finding the originals"):
@@ -1599,5 +1754,5 @@ def fix_rotation(args: list[str]) -> int:
             with step(f"re-grading {n}"):
                 ap.grade_one(files[n], out_dir / n, lattice, None, "off", 1.0, None, 95, 0.0, new_k)
             receipt("fixed", f"{n} · turned {int(k)} quarter turn(s) anticlockwise", "ok")
-    rot_path.write_text(json.dumps(rotations, indent=1))
+    rot_path.write_text(json.dumps(rotations, indent=1), encoding="utf-8")
     return 0

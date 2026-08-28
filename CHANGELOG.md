@@ -6,6 +6,40 @@ around them.
 
 Full technical history: `luts/CHANGELOG.md` for the LUTs themselves.
 
+## 0.5.1 — it runs on Windows
+A photographer tried to install it on a PC and the second line of the
+instructions — `saltgate` — came back as an unrecognised command. It wasn't
+their mistake: there was no Windows installer. The one-liner in the README
+needs `curl` and `sh`, and Windows has neither, so nothing was ever installed
+and step 2 had nothing to find.
+
+**There is now a PowerShell installer**, and the README gives it as its own
+line next to the Mac one, with a short note about what to do when a terminal
+still says the command doesn't exist (nearly always: open a new window). It
+installs the same way — uv, its own Python, the 47 MB orientation model
+checked against the same digest — and it doesn't need git, which most PCs
+don't have.
+
+Three quieter things that had also only ever run on a Mac. **The walkthrough's
+arrow keys work**, and with them the review of frames it wasn't sure it turned
+the right way up: that review was switched off by the same missing piece, so
+Windows users were losing the one question the tool cannot answer for itself.
+**Long grades no longer stop when the machine sleeps.** And **the roll is
+graded on as many workers as the machine can hold** — how much memory a PC has
+was never actually measured, so every one of them, and every Linux machine,
+was grading a whole roll one frame at a time.
+
+And the text files. Windows decodes with the machine's legacy code page unless
+it is told otherwise, so anything carrying this walkthrough's own characters
+failed there — including the crash log, which quotes the source and so failed
+at exactly the moment it was most wanted. Every file the tool reads or writes
+now says utf-8 out loud, a redirected `saltgate > log.txt` no longer stops at
+the banner, and a test refuses to let the next file forget.
+
+Nothing about the renders changed. Windows is now in the test matrix
+alongside macOS and Linux, including a run through the installed command
+itself, so this can't quietly rot again.
+
 ## 0.5.0 — the black point, returned to you — **renders change (if you use it)**
 The lab chose a black point per frame, and measured across all 67 donated
 pairs that choice is most of what still separates these LUTs from the lab's
