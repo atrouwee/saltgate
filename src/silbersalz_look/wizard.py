@@ -1228,7 +1228,7 @@ def _run() -> int:
     with step("reading the lab's delivery notes"):
         detected = detect_stock_from_sidecars(folder)
     if detected:
-        receipt("film", f"the lab's sidecar says {dict(STOCK_CHOICES).get(detected, detected)} — is that right?")
+        receipt("film", f"the folder says {dict(STOCK_CHOICES).get(detected, detected)} — is that right?")
         stock = detected if yes(True) else None
         if stock is None:
             stock = ask_stock()
