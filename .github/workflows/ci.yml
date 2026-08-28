@@ -12,6 +12,9 @@ jobs:
       # reported was that the command did not exist. Nothing that only ever ran
       # on a Mac can be claimed to work for them.
       matrix: { os: [macos-latest, ubuntu-latest, windows-latest] }
+      # a red PC must not be hidden behind a red Mac, or the other way round:
+      # every platform reports for itself
+      fail-fast: false
     runs-on: ${{ matrix.os }}
     defaults:
       run: { shell: bash }        # one set of steps for three operating systems
