@@ -1337,6 +1337,94 @@ def _run() -> int:
         note("leaving it as the LUT renders it")
     out()
 
+    # ◆ blacks — the lab's per-frame layer, returned to the person grading.
+    # Measured across all 67 donated pairs: with the right per-frame black the
+    # 250D default's remaining error collapses from dE 4.7 to 1.0, and every
+    # stock's worst frames are black-point frames. No model predicts it from
+    # the flat (three designs failed roll-holdout -- FINDINGS), but an eye can.
+    # Candidates are flagged by measurement: dim NEUTRAL scenes with shadow
+    # detail -- the one place the lab pressed blacks down. Chromatic shadows
+    # (a red room) and true black (an unexposed interior) it left alone, so
+    # those are not flagged.
+    black = 0.0
+    frame_black: dict[str, float] = {}
+    from . import color as colmod
+    # measured benefit differs per stock: on 250D the right per-frame black
+    # collapses the remaining error 4.7 -> 1.0 dE and on ColorPlus 4.2 -> 2.6;
+    # on Gold the lab kept ONE black per roll, on 500T it moved one frame.
+    _MAJOR = {"250d", "colorplus200"}
+    receipt("blacks", "the lab pressed the black point per frame — this roll's candidates:")
+    if stock in _MAJOR:
+        note("on this stock's donated rolls, per-frame blacks are MOST of the remaining\n"
+             "difference to the lab's own grade — worth the minute")
+    else:
+        note("on this stock's donated rolls the lab mostly kept one black for the whole\n"
+             "roll — not needed, unless you prefer the control anyway")
+    with step("measuring the shadows of every frame"):
+        cand = []
+        base_g = np.ones(3, np.float32) * (2.0 ** density)
+        for f in files:
+            a = rebate.crop_to_area(imgio.read_image(f, max_px=320).rgb, frac)
+            if rebate.looks_blank(a):
+                continue
+            if rotations:
+                a = orient_mod.apply_rotation(a, rotations.get(f.name, {}).get("k", 0))
+            g = np.clip(lutmod.apply_trilinear(lattice_of(look), balmod.apply_gains(a, base_g)), 0, 1)
+            lab = colmod.p3_codes_to_lab(g.reshape(-1, 3).astype(np.float64))
+            L = lab[:, 0]
+            shdet = float(((L > 8) & (L < 25)).mean())
+            true_black = float((L < 8).mean())
+            sh = L < 25
+            shc = float(np.median(np.hypot(lab[sh, 1], lab[sh, 2]))) if sh.sum() > 100 else 99.0
+            # thresholds calibrated on whole-frame renders of the donated
+            # rolls: flags exactly the frames whose oracle black is <= -0.08,
+            # spares chromatic shadows and true black
+            if shdet >= 0.35 and true_black <= 0.50 and shc <= 10.0:
+                cand.append((shdet, f, a))
+        cand.sort(key=lambda c: -c[0])
+        cand = cand[:8]
+    if not cand:
+        note("none — no dim neutral frames with shadow detail; blacks stay as the look renders them")
+        out()
+    else:
+        with step("rendering the black ladder"):
+            DEPTHS = [(0.0, "as the look renders it"), (-0.05, "pressed"), (-0.10, "deep")]
+            lad = []
+            for shdet, f, a in cand:
+                tiles = []
+                for bv, tag in DEPTHS:
+                    gv = np.concatenate([base_g, [bv]]) if bv else base_g
+                    t = np.clip(lutmod.apply_trilinear(lattice_of(look), balmod.apply_gains(a, gv)), 0, 1)
+                    if t.shape[0] > t.shape[1]:
+                        t = np.rot90(t, 1)
+                    tiles.append((t, f"[{len(tiles) + 1}] {bv:+.2f}" + (f" · {tag}" if tag else ""),
+                                  sheet.COLORS["lut"] if bv == 0.0 else sheet.COLORS["alt"]))
+                lad.append({"title": _frame_label(f.name), "tiles": tiles})
+        blacks_sheet = out_dir / "blacks.jpg"
+        sheet.save_sheet(sheet.build_sheet(lad, tile_h=230), blacks_sheet, quality=85)
+        open_file(blacks_sheet)
+        note(f"{len(cand)} frames flagged · opened {short(blacks_sheet)} — each at three depths\n"
+             "on the donated rolls the lab pressed frames like these by 0.05–0.10")
+        mode = options([("frame", "choose per frame"), ("roll", "one depth for the whole roll"),
+                        ("skip", "leave as rendered")], default_idx=0, per_row=3)
+        if mode == "roll":
+            black = ruler([0.0, -0.02, -0.05, -0.10], ["0", "-0.02", "-0.05", "-0.10"],
+                          ["as rendered", "", "pressed", "deep"], default_idx=0, unit="black")
+            receipt("blacks", f"{black:+.2f} on every frame", "ok")
+        elif mode == "frame":
+            for i, (shdet, f, a) in enumerate(cand, 1):
+                out(); out()
+                pick = options([("1", "as rendered"), ("2", "pressed −0.05"), ("3", "deep −0.10")],
+                               default_idx=1, per_row=3,
+                               legend=f"[{i}] of {len(cand)} · frame {_frame_label(f.name)}")
+                bv = {"1": 0.0, "2": -0.05, "3": -0.10}[pick]
+                if bv:
+                    frame_black[f.name] = bv
+            receipt("blacks", f"{len(frame_black)} of {len(cand)} flagged frames pressed", "ok")
+        else:
+            note("leaving them as the look renders them")
+        out()
+
     # ◆ grade
     import shutil as _sh
     already = [f for f in files if (out_dir / f.name).with_suffix(imgio.output_suffix(bits)).exists()]
@@ -1399,6 +1487,7 @@ def _run() -> int:
         try:
             ap.grade_folder(folder, out_dir, cube, balance_mode="off", resume=True, rotations=rotations,
                             limit=limit, density=density, bits=bits, crop_edge=crop_edge,
+                            black=black, frame_black=frame_black,
                             log=prog.log)
         except Exception as exc:                     # surfaced on the main thread below
             failure["e"] = exc
@@ -1460,6 +1549,7 @@ def _run() -> int:
         (out_dir / "rotations.json").write_text(json.dumps(rotations, indent=1))
     (out_dir / "saltgate.json").write_text(json.dumps({"source": str(folder), "lut": str(cube), "stock": stock,
                                                       "look": look.key, "density": density, "bits": bits, "edge": edge_choice, "film": borrowed or stock,
+                                                      "black": black, "frame_black": frame_black,
                                                       "rotated": bool(rotations)}, indent=1))
 
     # ◆ done

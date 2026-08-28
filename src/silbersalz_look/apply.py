@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import concurrent.futures as cf
 import os
+import sys
 import time
 from pathlib import Path
 
@@ -31,10 +32,41 @@ def ram_gb() -> float:
         return 8.0
 
 
+def available_gb() -> float:
+    """Memory actually free RIGHT NOW -- total RAM says how big the machine
+    is, not how much of it Photos, a browser and everything else have already
+    taken. Sizing workers from the total once froze a whole machine."""
+    try:
+        import subprocess
+
+        if sys.platform == "darwin":
+            out = subprocess.run(["vm_stat"], capture_output=True, text=True).stdout
+            pages = {}
+            for line in out.splitlines():
+                if ":" in line:
+                    k, _, v = line.partition(":")
+                    v = v.strip().rstrip(".")
+                    if v.isdigit():
+                        pages[k.strip()] = int(v)
+            free = pages.get("Pages free", 0) + pages.get("Pages inactive", 0)                  + pages.get("Pages purgeable", 0)
+            return free * 16384 / 1073741824
+        with open("/proc/meminfo") as f:
+            for line in f:
+                if line.startswith("MemAvailable"):
+                    return int(line.split()[1]) / 1048576
+    except Exception:
+        pass
+    return max(2.0, ram_gb() - 6.0)
+
+
+MEMORY_FLOOR_GB = 2.0     # below this, stop feeding the pool until it recovers
+
+
 def default_workers() -> int:
     cpu = os.cpu_count() or 4
     by_ram = int((ram_gb() - 6.0) // 2.5)
-    return max(1, min(cpu // 3, by_ram, 4))
+    by_avail = int(available_gb() // (PEAK_GB_PER_WORKER + 0.4))
+    return max(1, min(cpu // 3, by_ram, by_avail, 4))
 
 
 def grade_one(
@@ -50,6 +82,7 @@ def grade_one(
     rotate_k: int = 0,
     bits: int = 8,
     crop_edge: float | None = None,
+    black: float = 0.0,
 ) -> dict:
     t0 = time.time()
     if bits >= 16:
@@ -62,6 +95,11 @@ def grade_one(
         gains = balance.estimate_gains(area, anchors, mode=balance_mode, strength=balance_strength)
         del preview, area
     gains = gains * (2.0 ** density)  # print density: negative = denser/darker
+    if black:
+        # per-frame black point, the lab's own remaining layer: measured across
+        # 67 pairs it is MOST of the residual (250d bare 4.7 -> 1.0 dE with the
+        # right per-frame black). Subtracted in linear before the LUT.
+        gains = np.concatenate([gains, [black]])
 
     with Image.open(src) as img:
         icc = img.info.get("icc_profile")
@@ -120,6 +158,7 @@ def grade_one(
         "file": src.name,
         "crop": crop_note,
         "gains": [round(float(g), 4) for g in gains],
+        "black": round(float(black), 4),
         "seconds": round(time.time() - t0, 1),
     }
 
@@ -166,6 +205,8 @@ def grade_folder(
     rotations: dict | None = None,
     bits: int = 8,
     crop_edge: float | None = None,
+    black: float = 0.0,
+    frame_black: dict | None = None,
     log=print,
 ) -> list[dict]:
     lattice, title = lutmod.read_cube(cube_path)
@@ -206,18 +247,37 @@ def grade_folder(
 
     results = []
     with cf.ProcessPoolExecutor(max_workers=workers) as ex:
-        futs = {
-            ex.submit(grade_one, src, dst, lattice, anchors, balance_mode,
-                      balance_strength, area_frac, quality, density,
-                      (rotations or {}).get(src.name, {}).get("k", 0), bits, crop_edge): src
-            for src, dst in todo
-        }
+        # frames are fed in waves, not all at once: before each submission the
+        # brake checks what is ACTUALLY free, and a low machine pauses the roll
+        # instead of freezing the computer (which is not hypothetical)
+        def _submit(src, dst):
+            return ex.submit(grade_one, src, dst, lattice, anchors, balance_mode,
+                             balance_strength, area_frac, quality, density,
+                             (rotations or {}).get(src.name, {}).get("k", 0), bits, crop_edge,
+                             (frame_black or {}).get(src.name, black))
+
+        queue = list(todo)
+        futs = {}
+        while queue and len(futs) < workers:
+            src, dst = queue.pop(0)
+            futs[_submit(src, dst)] = src
         done = 0
-        for fut in cf.as_completed(futs):
-            r = fut.result()
-            results.append(r)
-            done += 1
-            log(f"  [{done}/{len(todo)}] {r['file']} gains={r['gains']} ({r['seconds']}s)")
+        while futs:
+            for fut in cf.as_completed(dict(futs)):
+                src = futs.pop(fut)
+                r = fut.result()
+                results.append(r)
+                done += 1
+                log(f"  [{done}/{len(todo)}] {r['file']} gains={r['gains']} ({r['seconds']}s)")
+                if queue:
+                    waited = 0.0
+                    while available_gb() < MEMORY_FLOOR_GB and waited < 120:
+                        if waited == 0.0:
+                            log(f"  [memory] under {MEMORY_FLOOR_GB:.0f} GB free — pausing before the next frame")
+                        time.sleep(5); waited += 5
+                    nsrc, ndst = queue.pop(0)
+                    futs[_submit(nsrc, ndst)] = nsrc
+                break
     if crop_edge is not None and results:
         n_centred = sum(1 for r in results if r.get("crop") == "centred")
         n_nofit = sum(1 for r in results if r.get("crop") == "nofit")

@@ -108,6 +108,18 @@ Silver salts sit at the heart of analogue photography. The "-gate" is a small co
 
 It is not an accusation. SALTGATE is a preservation project: appreciative of the original work, honest about what can and cannot be reconstructed, and focused on helping people complete their photographs.
 
+## Try it without a roll
+
+Six of the maintainer's own flat scans (downscaled, faces-free) ship as a demo:
+
+```bash
+curl -LO https://github.com/atrouwee/saltgate/releases/latest/download/saltgate-demo-flats.zip
+unzip saltgate-demo-flats.zip && saltgate     # point it at saltgate-demo/01_XXX
+```
+
+Every step of the walkthrough works on them — film detection, orientation,
+looks, the film edge, density and blacks — in about a minute.
+
 ## With appreciation
 
 SALTGATE would not exist without the work of the people who created SILBERSALZ35, its scanning systems and its colour workflow. Making motion-picture film and ECN-2 processing approachable for still photographers introduced many people to a way of working they would otherwise never have experienced.

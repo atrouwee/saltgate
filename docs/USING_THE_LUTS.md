@@ -61,6 +61,27 @@ sslook apply --look gold200:v1 --in ~/scans/roll12
 ```
 Output goes to a sibling folder `Graded_<version>/`, ICC and EXIF preserved (JPEG q95, 4:4:4; 16-bit output is on the roadmap). Add `--rotations rotations.json` after running `scripts/auto_rotate.py` for content-based upright orientation.
 
+## The per-frame black point — the one adjustment worth knowing
+
+Measured across all 67 donated pairs: the LUT carries the lab's colour, but the
+lab ALSO chose a black point per frame, and that choice is most of what remains
+between these LUTs and the lab's own files (the 250D default's residual drops
+from ΔE 4.7 to 1.0 with the right per-frame black). No model predicts it from
+the flat — we tried, three ways — but your eye can. The lab's own habit, read
+from its rolls:
+
+- **dim, neutral scenes with detail in the shadows** (a street in shade, a bar,
+  an underpass): black pressed **down** by roughly 0.05–0.10 — commit, don't lift.
+- **chromatic shadows** (a room lit red, neon): left alone.
+- **frames that are already black**: left alone — there is nothing to commit.
+- **golden-hour glow**: if anything, lifted slightly.
+
+Apply it **upstream of the LUT** where your app allows (a node before the LUT in
+Resolve; the tone curve's black input point elsewhere). Where the LUT is applied
+first, a blacks pull afterwards approximates it for small amounts. The `saltgate`
+walkthrough flags the candidate frames and renders each at three depths so this
+takes a minute per roll.
+
 ## Expectations
 - Fidelity is stated per LUT in the README (held-out ΔE2000 against the lab's own graded files where pairs exist; "proxy" where they don't).
-- The lab also applied a small per-roll density offset and set black per frame (≈ ±0.04 stop). Nothing here reproduces that automatically — we measured that automatic per-frame balancing makes results *worse* than the bare LUT — so `sslook apply` and a host app give the same result. Nudge exposure to taste.
+- The lab also applied a small per-roll density offset. Nothing here reproduces the per-frame layer automatically — we measured that automatic per-frame balancing makes results *worse* than the bare LUT — so `sslook apply` and a host app give the same result. Nudge exposure to taste, and see the black-point note above.

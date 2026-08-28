@@ -6,6 +6,23 @@ around them.
 
 Full technical history: `luts/CHANGELOG.md` for the LUTs themselves.
 
+## 0.5.0 — the black point, returned to you — **renders change (if you use it)**
+The lab chose a black point per frame, and measured across all 67 donated
+pairs that choice is most of what still separates these LUTs from the lab's
+own files — on the 250D default it is the difference between ΔE 4.7 and 1.0.
+No model reads it from a flat (we tried three; all failed honestly), so the
+walkthrough now hands it to you: a **blacks step** flags the frames the lab
+would have pressed — dim, neutral, detail in the shadows — shows each at
+three depths, and takes your choice per frame or one depth for the whole
+roll. Skip it and nothing changes. The same guidance is written up in
+USING_THE_LUTS.md for people applying the cubes elsewhere.
+
+Also: a **demo roll** — six downscaled flats from the maintainer's own film,
+one `curl` away, so the walkthrough can be tried without owning a SILBERSALZ
+roll. And the grader now sizes itself by the memory your machine actually
+has free (not what it theoretically contains), pausing rather than freezing
+a busy machine mid-roll.
+
 ## 0.4.0 — a new stock, and a tripwire — **renders change**
 Two things, both born from one donation. **Kodak ColorPlus 200 joins the
 stocks** — 13 flat/graded pairs of a Cairo roll (thanks @_.cherrymy) were

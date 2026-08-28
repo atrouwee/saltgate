@@ -72,12 +72,19 @@ def estimate_gains(
 def apply_gains(rgb: np.ndarray, gains: np.ndarray) -> np.ndarray:
     """Apply linear-light diagonal gains to display-encoded rgb.
 
+    gains is [gR,gG,gB] or [gR,gG,gB,black]; black is subtracted in linear
+    light before the gains -- the same convention as models.apply_gains_to_x,
+    so a black measured against pairs applies identically here.
+
     Clip-safe: values a positive gain pushes above ~0.95 linear are rolled
     off with a soft knee instead of hard-clipped, so highlight detail keeps
     its ordering for the LUT."""
-    if np.allclose(gains, 1.0):
+    gains = np.asarray(gains, dtype=np.float32)
+    black = float(gains[3]) if len(gains) > 3 else 0.0
+    gains = gains[:3]
+    if np.allclose(gains, 1.0) and black == 0.0:
         return rgb
-    lin = color.eotf(rgb) * gains.astype(np.float32)
+    lin = (color.eotf(rgb) - black) * gains
     if float(np.max(gains)) > 1.0:
         lin = color.soft_clip(lin, knee=0.05, low_end=False).astype(np.float32)
     return color.oetf(np.clip(lin, 0.0, 1.0))
