@@ -29,6 +29,13 @@ graded on as many workers as the machine can hold** — how much memory a PC has
 was never actually measured, so every one of them, and every Linux machine,
 was grading a whole roll one frame at a time.
 
+And the text files. Windows decodes with the machine's legacy code page unless
+it is told otherwise, so anything carrying this walkthrough's own characters
+failed there — including the crash log, which quotes the source and so failed
+at exactly the moment it was most wanted. Every file the tool reads or writes
+now says utf-8 out loud, a redirected `saltgate > log.txt` no longer stops at
+the banner, and a test refuses to let the next file forget.
+
 Nothing about the renders changed. Windows is now in the test matrix
 alongside macOS and Linux, including a run through the installed command
 itself, so this can't quietly rot again.

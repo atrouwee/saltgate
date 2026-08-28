@@ -66,7 +66,7 @@ def check(files, lattice: np.ndarray, stock: str) -> dict | None:
     """None when no envelope exists for this stock or the roll gave no
     usable shadows; otherwise {"ratio", "dist", "ok"}."""
     try:
-        env = json.loads(DATA.read_text()).get(stock)
+        env = json.loads(DATA.read_text(encoding="utf-8")).get(stock)
     except OSError:
         return None
     if not env:

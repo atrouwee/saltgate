@@ -119,7 +119,7 @@ def test_the_installer_pins_the_same_file_as_the_runtime():
     if not sh.exists():                      # the LUT release zip ships without it
         import pytest
         pytest.skip("install.sh not in this tree")
-    text = sh.read_text()
+    text = sh.read_text(encoding="utf-8")
     assert orient.BACKBONE["url"] in text, "install.sh points at a different url"
     assert orient.BACKBONE["sha256"] in text, "install.sh pins a different digest"
     assert orient.BACKBONE["file"] in text, "install.sh writes a different filename"
@@ -131,7 +131,7 @@ def test_third_party_notices_cover_both_shipped_models():
     from pathlib import Path
     n = Path(__file__).resolve().parents[1] / "THIRD-PARTY-NOTICES.md"
     assert n.exists(), "the attribution file is missing"
-    text = n.read_text()
+    text = n.read_text(encoding="utf-8")
     assert "BSD 3-Clause" in text, "torchvision's licence text is not reproduced"
     assert "Redistribution and use in source and binary forms" in text
     assert orient.BACKBONE["sha256"] in text, "the notice does not identify the file we ship"

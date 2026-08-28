@@ -112,14 +112,14 @@ def write_cube(
     vals = np.transpose(lattice, (2, 1, 0, 3)).reshape(-1, 3)
     for v in vals:
         lines.append(f"{v[0]:.6f} {v[1]:.6f} {v[2]:.6f}")
-    Path(path).write_text("\n".join(lines) + "\n")
+    Path(path).write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
 def read_cube(path: str | Path) -> tuple[np.ndarray, str]:
     n = None
     title = ""
     vals = []
-    for line in Path(path).read_text().splitlines():
+    for line in Path(path).read_text(encoding="utf-8").splitlines():
         line = line.strip()
         if not line or line.startswith("#"):
             continue
@@ -141,14 +141,14 @@ def read_cube(path: str | Path) -> tuple[np.ndarray, str]:
 
 def write_stats_sidecar(cube_path: str | Path, stats: dict) -> Path:
     p = Path(cube_path).with_suffix(".stats.json")
-    p.write_text(json.dumps(stats, indent=2, sort_keys=True))
+    p.write_text(json.dumps(stats, indent=2, sort_keys=True), encoding="utf-8")
     return p
 
 
 def read_stats_sidecar(cube_path: str | Path) -> dict | None:
     p = Path(cube_path).with_suffix(".stats.json")
     if p.exists():
-        return json.loads(p.read_text())
+        return json.loads(p.read_text(encoding="utf-8"))
     return None
 
 

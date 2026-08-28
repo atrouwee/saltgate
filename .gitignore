@@ -21,6 +21,9 @@ report/labeling/
 out/
 __pycache__/
 *.pyc
+# setuptools' in-tree staging dir: a copy of the package, and it landed in a
+# commit once because `pip install -e .` leaves it behind
+build/
 .pytest_cache/
 .DS_Store
 ._*

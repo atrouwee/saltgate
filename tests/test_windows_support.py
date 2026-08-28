@@ -14,6 +14,7 @@ error message:
   * the installer and the code have to agree about where the 47 MB orientation
     model lives, in three files that cannot import each other.
 """
+import ast
 import os
 import sys
 import types
@@ -29,13 +30,13 @@ ROOT = Path(__file__).resolve().parents[1]
 
 # ── the installers ─────────────────────────────────────────────────────────
 def test_windows_has_an_installer_of_its_own():
-    ps1 = (ROOT / "install.ps1").read_text()
+    ps1 = (ROOT / "install.ps1").read_text(encoding="utf-8")
     assert "uv tool install" in ps1
     assert "saltgate" in ps1
 
 
 def test_readme_sends_windows_to_it():
-    readme = (ROOT / "README.md").read_text()
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
     assert "install.ps1" in readme, "the Windows install line is what was missing"
     assert "install.sh" in readme
 
@@ -48,14 +49,14 @@ def test_both_installers_fetch_the_model_the_code_expects():
     away as tampered — quietly, on someone else's machine.
     """
     for name in ("install.sh", "install.ps1"):
-        text = (ROOT / name).read_text()
+        text = (ROOT / name).read_text(encoding="utf-8")
         assert orient.BACKBONE["sha256"] in text, f"{name} has a stale checksum"
         assert orient.BACKBONE["url"] in text, f"{name} has a stale model URL"
         assert orient.BACKBONE["file"] in text
 
 
 def test_installers_write_where_the_model_cache_reads():
-    sh, ps1 = (ROOT / "install.sh").read_text(), (ROOT / "install.ps1").read_text()
+    sh, ps1 = (ROOT / "install.sh").read_text(encoding="utf-8"), (ROOT / "install.ps1").read_text(encoding="utf-8")
     assert "Library/Application Support/saltgate/models" in sh   # the darwin branch
     assert ".saltgate/models" in sh                              # everything else
     assert r".saltgate\models" in ps1
@@ -151,9 +152,75 @@ def test_a_small_machine_still_gets_one(monkeypatch):
     assert ap.default_workers() == 1
 
 
+# ── text is utf-8, and Windows has to be told ──────────────────────────────
+def _shipped_modules() -> list[Path]:
+    """The package modules a user actually installs, in either tree.
+
+    The private repo publishes a subset, listed in publish/manifest.txt; the
+    public tree is that subset already. Research code is free to assume the
+    machine it was written on — what ships is not.
+    """
+    pkg = Path(wizard.__file__).parent
+    manifest = ROOT / "publish" / "manifest.txt"
+    if manifest.exists():
+        listed = {line.split("#", 1)[0].strip().split("->")[0].strip()
+                  for line in manifest.read_text(encoding="utf-8").splitlines()}
+        return sorted(pkg / Path(e).name for e in listed
+                      if e.startswith("src/silbersalz_look/") and e.endswith(".py"))
+    return sorted(pkg.glob("*.py"))
+
+
+@pytest.mark.parametrize("module", _shipped_modules(), ids=lambda p: p.name)
+def test_shipped_code_never_leaves_a_text_encoding_to_the_machine(module):
+    """`read_text()` with no encoding means cp1252 on Windows, utf-8 on a Mac.
+
+    This file is full of ░▒▓█ and ◆, the logs quote it, and a customer's own
+    sidecar can hold any accent at all — so a bare call is not a style point,
+    it is a crash that only ever happens on someone else's computer. It broke
+    four tests the first time Windows ran them; the same call in write_log()
+    would have broken the error handler itself.
+    """
+    tree = ast.parse(module.read_text(encoding="utf-8"))
+    for node in ast.walk(tree):
+        if (isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)
+                and node.func.attr in ("read_text", "write_text")):
+            assert any(kw.arg == "encoding" for kw in node.keywords), \
+                f"{module.name}:{node.lineno}: {node.func.attr}() leaves the encoding to the machine"
+
+
+def test_the_walkthrough_says_its_output_is_utf8_when_windows_redirects_it(monkeypatch):
+    """Piping the walkthrough to a file is how someone reports a problem.
+
+    Attached to a console Python writes wide characters and ░▒▓█ survive;
+    redirected, it drops to the legacy code page and the banner raises before
+    the first question.
+    """
+    class _Stream:
+        def __init__(self):
+            self.asked = None
+
+        def reconfigure(self, **kw):
+            self.asked = kw
+
+    out, err = _Stream(), _Stream()
+    monkeypatch.setattr(wizard.os, "name", "nt")
+    monkeypatch.setattr(wizard.sys, "stdout", out)
+    monkeypatch.setattr(wizard.sys, "stderr", err)
+    wizard.prepare_console()
+    assert out.asked["encoding"] == "utf-8" and err.asked["encoding"] == "utf-8"
+
+
+def test_both_entry_points_prepare_the_console_before_printing():
+    from silbersalz_look import cli
+
+    for mod in (wizard, cli):
+        src = Path(mod.__file__).read_text(encoding="utf-8")
+        assert "prepare_console()" in src, f"{Path(mod.__file__).name} never prepares the console"
+
+
 # ── the small courtesies must never be preconditions ───────────────────────
-def test_enabling_ansi_is_safe_everywhere():
-    wizard.enable_ansi()          # a no-op off Windows, and never raises on it
+def test_preparing_the_console_is_safe_everywhere():
+    wizard.prepare_console()      # a no-op off Windows, and never raises on it
 
 
 def test_staying_awake_is_optional():

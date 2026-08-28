@@ -29,7 +29,7 @@ def fast_and_visible(monkeypatch):
 
 def _step_calls():
     """Every `step(...)` call in wizard.py — the bare function, not Wedge.step."""
-    tree = ast.parse(Path(wizard.__file__).read_text())
+    tree = ast.parse(Path(wizard.__file__).read_text(encoding="utf-8"))
     return [n for n in ast.walk(tree)
             if isinstance(n, ast.Call) and isinstance(n.func, ast.Name) and n.func.id == "step"]
 
@@ -200,7 +200,7 @@ def test_spinner_tail_lets_a_counter_move(capsys):
 
 def test_busy_and_spinner_while_use_the_one_moving_primitive():
     """Two spinner implementations drift; there is only one."""
-    src = Path(wizard.__file__).read_text()
+    src = Path(wizard.__file__).read_text(encoding="utf-8")
     body = src[src.index("def busy("):src.index("def open_file(")]
     assert body.count("Spinner(") == 2
     assert "while not stop.is_set()" not in body, "a second hand-rolled spin loop came back"
@@ -208,7 +208,7 @@ def test_busy_and_spinner_while_use_the_one_moving_primitive():
 
 def test_every_animated_line_goes_through_the_screen_lock():
     """Two threads writing escape sequences to one line garble it."""
-    src = Path(wizard.__file__).read_text()
+    src = Path(wizard.__file__).read_text(encoding="utf-8")
     animated = src[src.index("class Spinner"):src.index("# ── helpers")]
     for line in animated.splitlines():
         if "print(" in line and "\\r" in line:

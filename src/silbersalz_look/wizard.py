@@ -383,16 +383,31 @@ def _read_key(kb) -> str:
         termios.tcsetattr(fd, termios.TCSADRAIN, saved)
 
 
-def enable_ansi() -> None:
-    """Let the receipt render on Windows instead of printing its escape codes.
+def prepare_console() -> None:
+    """Make a Windows console able to print this walkthrough. No-op elsewhere.
 
-    Every line this walkthrough draws is ANSI: the amber ◆, the density wedge,
-    the cursor moves the option list redraws with. Windows Terminal understands
-    them; the older console host that still opens for `cmd.exe` only does once
-    ENABLE_VIRTUAL_TERMINAL_PROCESSING is set on the handle. No-op elsewhere.
+    Two separate problems, both fatal to the receipt and neither one visible on
+    a Mac:
+
+    * the escape codes. Every line here is ANSI -- the amber ◆, the density
+      wedge, the cursor moves the option list redraws with. Windows Terminal
+      understands them; the older console host that still opens for `cmd.exe`
+      only does once ENABLE_VIRTUAL_TERMINAL_PROCESSING is set on the handle.
+    * the glyphs. Attached to a console, Python writes wide characters and
+      ░▒▓█ arrive fine -- but REDIRECT that output to a pipe or a file and it
+      falls back to the machine's legacy code page, where those characters do
+      not exist, and the banner raises UnicodeEncodeError before the
+      walkthrough has said a word. `saltgate > log.txt` is a reasonable thing
+      for someone to do when reporting a problem.
     """
     if os.name != "nt":
         return
+    try:                                        # pragma: no cover - Windows only
+        for stream in (sys.stdout, sys.stderr):
+            if hasattr(stream, "reconfigure"):
+                stream.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
     try:                                        # pragma: no cover - Windows only
         import ctypes
 
@@ -874,7 +889,7 @@ def config_path() -> Path:
 def load_config() -> dict:
     """Never raises. A corrupt or unreadable config must not stop someone grading."""
     try:
-        d = json.loads(config_path().read_text())
+        d = json.loads(config_path().read_text(encoding="utf-8"))
         return d if isinstance(d, dict) else {}
     except Exception:
         return {}
@@ -884,7 +899,7 @@ def save_config(cfg: dict) -> None:
     try:
         p = config_path()
         p.parent.mkdir(parents=True, exist_ok=True)
-        p.write_text(json.dumps(cfg, indent=1))
+        p.write_text(json.dumps(cfg, indent=1), encoding="utf-8")
     except Exception:
         pass   # a preference is a convenience; failing to store it is not an error
 
@@ -903,7 +918,12 @@ def remember_look(stock: str, key: str) -> None:
 def write_log(kind: str, text: str) -> Path:
     from . import __version__
     p = log_dir() / f"{kind}-{time.strftime('%Y%m%d-%H%M%S')}.log"
-    p.write_text(f"saltgate {__version__} · python {sys.version.split()[0]} · {sys.platform}\n\n{text}")
+    # utf-8 is not optional here: the traceback being logged quotes source lines
+    # out of this very file, ░▒▓█ and all, and this runs INSIDE the error
+    # handler -- a second exception here would replace the plain-sentence
+    # apology with the raw traceback the safety net exists to prevent.
+    p.write_text(f"saltgate {__version__} · python {sys.version.split()[0]} · {sys.platform}\n\n{text}",
+                 encoding="utf-8")
     return p
 
 
@@ -1027,14 +1047,20 @@ def detect_stock_from_sidecars(folder: Path) -> str | None:
     for d in (folder, folder.parent):
         for js in d.glob("*Exported.json"):
             try:
-                code = str(json.loads(js.read_text()).get("Film_1_Stock", "")).strip()
+                code = str(json.loads(js.read_text(encoding="utf-8")).get("Film_1_Stock", "")).strip()
                 if code in LAB_STOCK_CODES:
                     return LAB_STOCK_CODES[code]
             except Exception:
                 pass
         info = d / "info.txt"
         if info.exists():
-            t = info.read_text().lower()
+            # someone else's file, in someone else's encoding: the stock codes
+            # we look for are ASCII, so a byte we cannot decode is not a reason
+            # to give up on the card -- or to end the walkthrough
+            try:
+                t = info.read_text(encoding="utf-8", errors="replace").lower()
+            except OSError:
+                continue
             for key in ("250d", "50d", "200t", "500t", "125"):
                 if key in t:
                     return "125special" if key == "125" else key
@@ -1101,7 +1127,7 @@ def ensure_orientation() -> bool:
 # ── the walkthrough ───────────────────────────────────────────────────────
 def run() -> int:
     """Entry point with a safety net: never show a traceback, always save one."""
-    enable_ansi()
+    prepare_console()
     try:
         return _run()
     except KeyboardInterrupt:
@@ -1575,10 +1601,10 @@ def _run() -> int:
         out()
 
     if rotations:
-        (out_dir / "rotations.json").write_text(json.dumps(rotations, indent=1))
+        (out_dir / "rotations.json").write_text(json.dumps(rotations, indent=1), encoding="utf-8")
     (out_dir / "saltgate.json").write_text(json.dumps({"source": str(folder), "lut": str(cube), "stock": stock,
                                                       "look": look.key, "density": density, "bits": bits, "edge": edge_choice, "film": borrowed or stock,
-                                                      "rotated": bool(rotations)}, indent=1))
+                                                      "rotated": bool(rotations)}, indent=1), encoding="utf-8")
 
     # ◆ done
     remaining = len([f for f in files if not (out_dir / f.name).exists()])
@@ -1606,8 +1632,8 @@ def fix_rotation(args: list[str]) -> int:
     if not state_path.exists():
         receipt("stopped", "that folder wasn't made by the walkthrough (no saltgate.json inside)", "err"); return 1
     SILENCE.start()
-    state = json.loads(state_path.read_text()); rot_path = out_dir / "rotations.json"
-    rotations = json.loads(rot_path.read_text()) if rot_path.exists() else {}
+    state = json.loads(state_path.read_text(encoding="utf-8")); rot_path = out_dir / "rotations.json"
+    rotations = json.loads(rot_path.read_text(encoding="utf-8")) if rot_path.exists() else {}
     from . import apply as ap, lut as lutmod, imgio
     src = Path(state["source"])
     with step("loading the look and finding the originals"):
@@ -1627,5 +1653,5 @@ def fix_rotation(args: list[str]) -> int:
             with step(f"re-grading {n}"):
                 ap.grade_one(files[n], out_dir / n, lattice, None, "off", 1.0, None, 95, 0.0, new_k)
             receipt("fixed", f"{n} · turned {int(k)} quarter turn(s) anticlockwise", "ok")
-    rot_path.write_text(json.dumps(rotations, indent=1))
+    rot_path.write_text(json.dumps(rotations, indent=1), encoding="utf-8")
     return 0

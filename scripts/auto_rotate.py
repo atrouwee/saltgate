@@ -19,12 +19,12 @@ ap.add_argument("--cache", default="cache"); ap.add_argument("--lut", default="l
 a = ap.parse_args()
 
 if a.set:
-    path = Path(a.set[0]); rot = json.loads(path.read_text())
+    path = Path(a.set[0]); rot = json.loads(path.read_text(encoding="utf-8"))
     for kv in a.set[1:]:
         key, k = kv.split("="); 
         for name in rot:
             if key in name: rot[name]["k"] = int(k) % 4; rot[name]["confidence"] = 1.0; rot[name]["manual"] = True
-    path.write_text(json.dumps(rot, indent=1)); print("updated", path); sys.exit(0)
+    path.write_text(json.dumps(rot, indent=1), encoding="utf-8"); print("updated", path); sys.exit(0)
 
 in_dir = Path(a.in_dir); out = Path(a.out) if a.out else in_dir.parent / f"rotations_{in_dir.name}.json"
 files = [f for f in imgio.list_images(in_dir) if f.suffix.lower() in (".jpg", ".jpeg")]
@@ -47,7 +47,7 @@ for i, f in enumerate(files):
         area = _lut.apply_trilinear(lat, _bal.apply_gains(area, _bal.estimate_gains(area, anchors)))
     thumbs.append(cv2.resize(area, (max(8, round(area.shape[1] * s)), max(8, round(area.shape[0] * s))), interpolation=cv2.INTER_AREA))
     if (i + 1) % 20 == 0: print(f"  {i+1}/{len(files)} ({time.time()-t0:.0f}s)", flush=True)
-out.parent.mkdir(parents=True, exist_ok=True); out.write_text(json.dumps(rot, indent=1))
+out.parent.mkdir(parents=True, exist_ok=True); out.write_text(json.dumps(rot, indent=1), encoding="utf-8")
 low = [n for n, r in rot.items() if r.get("confidence", 1) < 0.5 and not r.get("blank")]
 print(f"wrote {out}: {len(files)} frames, {len(low)} low-confidence (review): {', '.join(n.split('_')[-1].split('-')[0] for n in low)}")
 

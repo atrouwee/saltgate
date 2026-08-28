@@ -12,6 +12,11 @@ ProcessPoolExecutor, and Windows spawns its workers rather than forking them, so
 launcher a user actually types that has to survive being re-entered."""
 import json, os, shlex, subprocess, sys, tempfile
 from pathlib import Path
+
+# this script prints the walkthrough's own output back out, ░▒▓█ and all, and in
+# CI its stdout is a pipe -- which on Windows means the legacy code page
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 import numpy as np
 from PIL import Image
 
@@ -29,7 +34,10 @@ env = dict(os.environ, PYTHONPATH=str(Path(__file__).resolve().parents[1] / "src
 cmd = shlex.split(os.environ["SALTGATE_SMOKE_CMD"]) if os.environ.get("SALTGATE_SMOKE_CMD") else \
       [sys.executable, "-c", "from silbersalz_look.cli import main; raise SystemExit(main([]))"]
 print("running:", " ".join(cmd))
-r = subprocess.run(cmd, input=answers, capture_output=True, text=True, env=env, timeout=600)
+# not text=True: that decodes the child with the machine's locale encoding, and
+# on Windows the walkthrough deliberately writes utf-8 down a redirected pipe.
+r = subprocess.run(cmd, input=answers, capture_output=True, encoding="utf-8", errors="replace",
+                   env=env, timeout=600)
 out = tmp / "01_XXX_saltgate"
 state = out / "saltgate.json"
 ok = (r.returncode == 0 and out.exists() and len(list(out.glob("26.*.jpg"))) == 4
@@ -37,7 +45,7 @@ ok = (r.returncode == 0 and out.exists() and len(list(out.glob("26.*.jpg"))) == 
       # every optional step must be reachable AND skippable: the look choice and
       # the per-roll density both land in saltgate.json, so a step that silently
       # stopped appearing would fail here rather than in someone's terminal
-      and state.exists() and {"look", "density", "bits", "edge"} <= set(json.loads(state.read_text())))
+      and state.exists() and {"look", "density", "bits", "edge"} <= set(json.loads(state.read_text(encoding="utf-8"))))
 print(r.stdout[-1500:]); print(r.stderr[-800:])
 print("SMOKE", "OK" if ok else "FAILED")
 sys.exit(0 if ok else 1)

@@ -116,7 +116,7 @@ def main():
 
     # ── table ────────────────────────────────────────────────────────────
     def held(cube, kind="by_frame"):
-        j = json.loads((ROOT / "luts" / cube).read_text())["holdout_median_dE2000"]
+        j = json.loads((ROOT / "luts" / cube).read_text(encoding="utf-8"))["holdout_median_dE2000"]
         s = j.get(kind, {}).get("_summary")
         return f"{s['bare_lut']['median']:.1f}" if s else "—"
 

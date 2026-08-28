@@ -86,7 +86,7 @@ def roll_area_fractions(
     key = hashlib.sha1("|".join(str(f) for f in files).encode()).hexdigest()[:16]
     cache_file = (cache_dir / f"rebate_{key}.json") if cache_dir else None
     if cache_file and cache_file.exists():
-        return tuple(json.loads(cache_file.read_text()))
+        return tuple(json.loads(cache_file.read_text(encoding="utf-8")))
 
     # spread candidates across the roll; skip blank/dark frames (no bright
     # interior means no geometry signal — rolls often start with unexposed
@@ -106,7 +106,7 @@ def roll_area_fractions(
     med = tuple(float(np.median([fr[i] for fr in fracs])) for i in range(4))
     if cache_file:
         cache_file.parent.mkdir(parents=True, exist_ok=True)
-        cache_file.write_text(json.dumps(med))
+        cache_file.write_text(json.dumps(med), encoding="utf-8")
     return med
 
 
